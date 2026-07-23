@@ -36,6 +36,7 @@ export function DataBindingForm({
 
   useEffect(() => {
     if (!dataSourceId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale async data when the source is removed
       setTables([]);
       return;
     }
@@ -56,6 +57,7 @@ export function DataBindingForm({
 
   useEffect(() => {
     if (!dataSourceId || !binding.table) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale async data when the table is cleared
       setColumns([]);
       return;
     }

@@ -29,9 +29,8 @@ export function HeroSlider({
     return () => clearInterval(t);
   }, [settings.autoplay, settings.intervalMs, count]);
 
-  useEffect(() => {
-    if (index >= count) setIndex(0);
-  }, [count, index]);
+  // Derive a safe current index instead of clamping via an effect.
+  const current = count > 0 ? ((index % count) + count) % count : 0;
 
   if (count === 0) {
     return (
@@ -66,7 +65,7 @@ export function HeroSlider({
       onTouchEnd={(e) => {
         if (startX.current == null) return;
         const dx = e.changedTouches[0].clientX - startX.current;
-        if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+        if (Math.abs(dx) > 40) go(current + (dx < 0 ? 1 : -1));
         startX.current = null;
       }}
     >
@@ -74,16 +73,16 @@ export function HeroSlider({
         <div
           key={i}
           className="absolute inset-0"
-          aria-hidden={i !== index}
+          aria-hidden={i !== current}
           style={
             settings.transition === "fade"
               ? {
-                  opacity: i === index ? 1 : 0,
+                  opacity: i === current ? 1 : 0,
                   transition: "opacity 700ms ease",
-                  zIndex: i === index ? 1 : 0,
+                  zIndex: i === current ? 1 : 0,
                 }
               : {
-                  transform: `translateX(${(i - index) * 100}%)`,
+                  transform: `translateX(${(i - current) * 100}%)`,
                   transition: "transform 600ms ease",
                 }
           }
@@ -141,7 +140,7 @@ export function HeroSlider({
         <>
           <button
             type="button"
-            onClick={() => go(index - 1)}
+            onClick={() => go(current - 1)}
             aria-label="Previous slide"
             className="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white hover:bg-black/60"
           >
@@ -149,7 +148,7 @@ export function HeroSlider({
           </button>
           <button
             type="button"
-            onClick={() => go(index + 1)}
+            onClick={() => go(current + 1)}
             aria-label="Next slide"
             className="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white hover:bg-black/60"
           >
@@ -168,8 +167,8 @@ export function HeroSlider({
               aria-label={`Go to slide ${i + 1}`}
               className="h-2.5 rounded-full transition-all"
               style={{
-                width: i === index ? 22 : 10,
-                background: i === index ? "#fff" : "rgba(255,255,255,0.6)",
+                width: i === current ? 22 : 10,
+                background: i === current ? "#fff" : "rgba(255,255,255,0.6)",
               }}
             />
           ))}

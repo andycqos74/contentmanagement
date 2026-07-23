@@ -9,7 +9,7 @@
   var origin = "";
   try {
     origin = new URL(current.src).origin;
-  } catch (e) {
+  } catch {
     origin = "";
   }
 

@@ -73,6 +73,7 @@ export function Editor({
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
     if (contentSource !== "DATA" || !dataSourceId || !binding.table) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale preview rows when leaving data mode
       setPreviewItems([]);
       return;
     }
