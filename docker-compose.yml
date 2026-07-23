@@ -1,0 +1,27 @@
+# Local dev MySQL for the widget CMS.
+#   - `cms` database + `cms` user  -> the CMS content DB (Prisma manages the schema)
+#   - `website` database + read-only `website_ro` user -> stands in for the club
+#     website DB, so the data-driven "Latest News" widget is fully testable locally.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cms
+      MYSQL_USER: cms
+      MYSQL_PASSWORD: cms
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - cms_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  cms_mysql_data:

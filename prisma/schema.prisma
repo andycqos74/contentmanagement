@@ -1,0 +1,81 @@
+// CMS content database. Managed with `prisma db push` / migrations.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum WidgetType {
+  HERO_SLIDER
+  LATEST_NEWS
+}
+
+enum WidgetStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ContentSource {
+  MANUAL
+  DATA
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  widgets      Widget[]
+}
+
+model Widget {
+  id            String        @id // short public nanoid used in embed codes
+  name          String
+  type          WidgetType
+  status        WidgetStatus  @default(DRAFT)
+  contentSource ContentSource @default(MANUAL)
+  settings      Json // working (draft) design/layout settings
+  dataSourceId  String?
+  dataBinding   Json? // { table, fieldMap, filters, orderBy, limit }
+  published     Json? // snapshot served to embeds: { type, contentSource, settings, dataSourceId, dataBinding, items }
+  publishedAt   DateTime?
+  createdById   String?
+  createdBy     User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  dataSource    DataSource?   @relation(fields: [dataSourceId], references: [id], onDelete: SetNull)
+  items         WidgetItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([createdById])
+  @@index([dataSourceId])
+}
+
+// Generic manual content row. `data` JSON shape depends on the widget type.
+model WidgetItem {
+  id        String @id @default(cuid())
+  widgetId  String
+  widget    Widget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+  sortOrder Int    @default(0)
+  data      Json
+
+  @@index([widgetId])
+}
+
+// A saved, read-only MySQL connection used by data-driven widgets.
+model DataSource {
+  id          String   @id @default(cuid())
+  name        String
+  host        String
+  port        Int      @default(3306)
+  database    String
+  username    String
+  passwordEnc String // AES-256-GCM encrypted (see lib/crypto.ts)
+  ssl         Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  widgets     Widget[]
+}
