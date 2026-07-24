@@ -1,0 +1,61 @@
+# Portainer stack for the Widget CMS (contentmanagement).
+#
+# Deploy: Portainer -> Stacks -> Add stack -> "Repository"
+#   Repository URL : https://github.com/andycqos74/contentmanagement
+#   Compose path   : portainer-stack.yml
+# Then add the environment variables (see .env.portainer.example) in the stack's
+# "Environment variables" section and deploy. Portainer builds the app image from
+# the included Dockerfile and starts both services. The web UI is then reachable on
+# the host at the port set by APP_PORT (default 3000).
+#
+# Required: AUTH_SECRET, DATASOURCE_ENC_KEY (see README for how to generate).
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-this-root-pw}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cms}
+      MYSQL_USER: ${MYSQL_USER:-cms}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-this-db-pw}
+    volumes:
+      - cms-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-change-this-root-pw}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Prefer a prebuilt image? Comment out `build:` above and uncomment this
+    # (published by .github/workflows/docker-publish.yml):
+    # image: ghcr.io/andycqos74/contentmanagement:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "mysql://${MYSQL_USER:-cms}:${MYSQL_PASSWORD:-change-this-db-pw}@db:3306/${MYSQL_DATABASE:-cms}"
+      AUTH_SECRET: ${AUTH_SECRET}
+      DATASOURCE_ENC_KEY: ${DATASOURCE_ENC_KEY}
+      # Public URL the CMS is reached at (used in embed snippets). Optional — if
+      # blank it is derived from the request / X-Forwarded-* headers.
+      APP_BASE_URL: ${APP_BASE_URL:-}
+      # Admin login, created on first start.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme}
+      # Optional image storage (github.com/andycqos74/combinedstorage).
+      STORAGE_BASE_URL: ${STORAGE_BASE_URL:-}
+      STORAGE_USERNAME: ${STORAGE_USERNAME:-}
+      STORAGE_PASSWORD: ${STORAGE_PASSWORD:-}
+      STORAGE_UPLOAD_PARENT: ${STORAGE_UPLOAD_PARENT:-root}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  cms-db:

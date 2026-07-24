@@ -1,9 +1,22 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import type { WidgetTypeKey } from "@/lib/widgets/registry";
 import { Editor } from "./Editor";
 
 export const dynamic = "force-dynamic";
+
+// The base URL used in the copy-paste embed snippet. Resolved at runtime so a
+// single built image works at whatever host/proxy it's deployed behind:
+// explicit APP_BASE_URL wins, else the (forwarded) request host, else localhost.
+async function resolveAppUrl(): Promise<string> {
+  const configured = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (configured) return configured.replace(/\/$/, "");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) return `${h.get("x-forwarded-proto") ?? "http"}://${host}`;
+  return "http://localhost:3000";
+}
 
 export default async function WidgetEditorPage({
   params,
@@ -38,7 +51,7 @@ export default async function WidgetEditorPage({
         publishedAt: widget.publishedAt?.toISOString() ?? null,
       }}
       dataSources={sources}
-      appUrl={process.env.NEXT_PUBLIC_APP_URL ?? ""}
+      appUrl={await resolveAppUrl()}
     />
   );
 }

@@ -126,6 +126,35 @@ Everything else (API, embed, preview, data binding) is generic.
 
 ## Deployment
 
-Deploy as a standard Next.js app (Vercel, or any Node host / container). Set the same
-env vars in production and point `DATABASE_URL` at your production MySQL. Run
-`npm run db:push` (or `prisma migrate deploy` once you adopt migrations) on release.
+### Portainer (Docker) — recommended
+
+The repo ships a `Dockerfile` and a `portainer-stack.yml` that brings up the app **and** its
+MySQL database together. The app container applies the schema and seeds the admin user on start
+(see `docker-entrypoint.sh`).
+
+1. In Portainer: **Stacks → Add stack → Repository**.
+   - **Repository URL:** `https://github.com/andycqos74/contentmanagement`
+   - **Compose path:** `portainer-stack.yml`
+2. In **Environment variables**, add the values from [`.env.portainer.example`](./.env.portainer.example)
+   — at minimum `AUTH_SECRET`, `DATASOURCE_ENC_KEY`, and a `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`
+   to log in with. Change the MySQL passwords.
+3. **Deploy.** Portainer builds the image from the `Dockerfile` and starts both services. The web UI
+   is served on the host at `APP_PORT` (default **3000**) — open `http://<host>:3000` and sign in.
+
+Data lives in the `cms-db` volume, so it survives restarts/redeploys. Put the app behind an HTTPS
+reverse proxy for production; it honours `X-Forwarded-Host` / `X-Forwarded-Proto` when building embed
+URLs (or set `APP_BASE_URL` explicitly).
+
+**Prebuilt image (optional).** `.github/workflows/docker-publish.yml` publishes the image to
+`ghcr.io/andycqos74/contentmanagement`. To pull it instead of building on the host, swap the `build:`
+block in `portainer-stack.yml` for the commented `image:` line (make the GHCR package public, or add
+registry credentials in Portainer).
+
+To connect image uploads, deploy [Combined Storage](https://github.com/andycqos74/combinedstorage)
+(it has its own stack) and set `STORAGE_BASE_URL` / `STORAGE_USERNAME` / `STORAGE_PASSWORD`.
+
+### Other hosts
+
+It's a standard Next.js app, so it also runs on Vercel or any Node host. Set the same env vars, point
+`DATABASE_URL` at your MySQL, and run `npm run db:push` (or `prisma migrate deploy` once you adopt
+migrations) on release.
