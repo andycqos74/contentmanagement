@@ -9,6 +9,7 @@ import {
   TextField,
   ToggleField,
 } from "@/components/admin/fields";
+import { ImageField } from "@/components/admin/ImageField";
 import type {
   HeroSettings,
   HeroSlide,
@@ -189,7 +190,7 @@ export function HeroContentEditor({
         <ItemShell key={i} index={i} count={items.length} onMove={(d) => ops.move(i, d)} onRemove={() => ops.remove(i)}>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <TextField label="Image URL" value={s.imageUrl} onChange={(v) => ops.patch(i, { imageUrl: v })} placeholder="https://…" />
+              <ImageField label="Image" value={s.imageUrl} onChange={(v) => ops.patch(i, { imageUrl: v })} />
             </div>
             <TextField label="Heading" value={s.heading} onChange={(v) => ops.patch(i, { heading: v })} />
             <TextField label="Subheading" value={s.subheading} onChange={(v) => ops.patch(i, { subheading: v })} />
@@ -231,7 +232,7 @@ export function NewsContentEditor({
             <TextField label="Date" value={it.date} onChange={(v) => ops.patch(i, { date: v })} placeholder="2026-07-20" />
             <TextField label="Category" value={it.category} onChange={(v) => ops.patch(i, { category: v })} />
             <div className="col-span-2">
-              <TextField label="Image URL" value={it.imageUrl} onChange={(v) => ops.patch(i, { imageUrl: v })} placeholder="https://…" />
+              <ImageField label="Image" value={it.imageUrl} onChange={(v) => ops.patch(i, { imageUrl: v })} />
             </div>
             <div className="col-span-2">
               <TextField label="Excerpt" value={it.excerpt} onChange={(v) => ops.patch(i, { excerpt: v })} textarea />

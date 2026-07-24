@@ -89,6 +89,26 @@ add filters / ordering / a limit. No SQL is written by hand:
 **Recommendation:** give the connection a MySQL user with `GRANT SELECT` only. Passwords
 are encrypted at rest with `DATASOURCE_ENC_KEY`.
 
+## Image storage (Combined Storage)
+
+Image fields in the editor (hero slides, news thumbnails) accept a URL **or** an uploaded file.
+Uploads are streamed by the CMS server to a running
+[Combined Storage](https://github.com/andycqos74/combinedstorage) service, which stores the bytes
+across its backends and returns a stable public CDN URL (`/f/<token>`). That URL is saved on the
+widget and used directly in embeds.
+
+Enable it in `.env` (leave blank to keep image fields URL-only):
+
+| Variable | Purpose |
+| --- | --- |
+| `STORAGE_BASE_URL` | Base URL of the Combined Storage service, e.g. `http://localhost:4000` |
+| `STORAGE_USERNAME` / `STORAGE_PASSWORD` | Its admin credentials |
+| `STORAGE_UPLOAD_PARENT` | Folder id to upload into (`root` = top level) |
+
+The CMS talks to Combined Storage server-to-server (admin session cookie, cached and refreshed on
+expiry) — browsers never see those credentials. Ensure the storage service has at least one enabled
+backend so uploads have somewhere to land.
+
 ## Scripts
 
 - `npm run dev` / `build` / `start`
