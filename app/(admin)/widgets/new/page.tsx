@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Images, Newspaper } from "lucide-react";
+import { ArrowLeft, Images, Newspaper, RectangleHorizontal } from "lucide-react";
 import { WIDGET_LIST, type WidgetTypeKey } from "@/lib/widgets/registry";
 
 const ICONS: Record<WidgetTypeKey, React.ComponentType<{ size?: number }>> = {
   HERO_SLIDER: Images,
   LATEST_NEWS: Newspaper,
+  BANNER: RectangleHorizontal,
 };
 
 export default function NewWidgetPage() {

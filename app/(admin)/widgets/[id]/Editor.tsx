@@ -8,6 +8,8 @@ import { WidgetRenderer } from "@/components/widgets/WidgetRenderer";
 import {
   dataBindingSchema,
   getWidgetDef,
+  type BannerElement,
+  type BannerSettings,
   type DataBinding,
   type HeroSettings,
   type HeroSlide,
@@ -22,6 +24,9 @@ import {
   NewsSettingsForm,
 } from "./forms-settings";
 import { DataBindingForm } from "./DataBindingForm";
+import { BannerControls } from "./BannerControls";
+import { BannerCanvas } from "./BannerCanvas";
+import { BannerSettingsForm } from "./BannerSettingsForm";
 
 type Initial = {
   id: string;
@@ -47,6 +52,7 @@ export function Editor({
 }) {
   const router = useRouter();
   const def = getWidgetDef(initial.type);
+  const isBanner = initial.type === "BANNER";
 
   const [name, setName] = useState(initial.name);
   const [settings, setSettings] = useState<Record<string, unknown>>(() =>
@@ -69,6 +75,7 @@ export function Editor({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedElId, setSelectedElId] = useState<string | null>(null);
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -217,60 +224,73 @@ export function Editor({
           </div>
 
           <div className="p-4">
-            {tab === "content" && (
-              <div className="space-y-4">
-                <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setContentSource("MANUAL")}
-                    className={`rounded-md px-3 py-1.5 font-medium ${contentSource === "MANUAL" ? "bg-white shadow-sm" : "text-slate-500"}`}
-                  >
-                    Manual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContentSource("DATA")}
-                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium ${contentSource === "DATA" ? "bg-white shadow-sm" : "text-slate-500"}`}
-                  >
-                    <Database size={14} /> Data source
-                  </button>
-                </div>
-
-                {contentSource === "MANUAL" ? (
-                  initial.type === "HERO_SLIDER" ? (
-                    <HeroContentEditor items={items as HeroSlide[]} setItems={(v) => setItems(v)} />
-                  ) : (
-                    <NewsContentEditor items={items as NewsItem[]} setItems={(v) => setItems(v)} />
-                  )
-                ) : (
-                  <div className="space-y-3">
-                    <DataBindingForm
-                      dataSources={dataSources}
-                      dataFields={def.dataFields}
-                      dataSourceId={dataSourceId}
-                      setDataSourceId={setDataSourceId}
-                      binding={binding}
-                      setBinding={setBinding}
-                    />
-                    {previewError && (
-                      <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-                        {previewError}
-                      </div>
-                    )}
-                    {!previewError && binding.table && (
-                      <div className="text-xs text-slate-500">
-                        {previewLoading ? "Loading…" : `${previewItems.length} row(s) matched.`}
-                      </div>
-                    )}
+            {tab === "content" &&
+              (isBanner ? (
+                <BannerControls
+                  items={items as BannerElement[]}
+                  setItems={(v) => setItems(v as Record<string, unknown>[])}
+                  selectedId={selectedElId}
+                  setSelectedId={setSelectedElId}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setContentSource("MANUAL")}
+                      className={`rounded-md px-3 py-1.5 font-medium ${contentSource === "MANUAL" ? "bg-white shadow-sm" : "text-slate-500"}`}
+                    >
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContentSource("DATA")}
+                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium ${contentSource === "DATA" ? "bg-white shadow-sm" : "text-slate-500"}`}
+                    >
+                      <Database size={14} /> Data source
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {contentSource === "MANUAL" ? (
+                    initial.type === "HERO_SLIDER" ? (
+                      <HeroContentEditor items={items as HeroSlide[]} setItems={(v) => setItems(v)} />
+                    ) : (
+                      <NewsContentEditor items={items as NewsItem[]} setItems={(v) => setItems(v)} />
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      <DataBindingForm
+                        dataSources={dataSources}
+                        dataFields={def.dataFields}
+                        dataSourceId={dataSourceId}
+                        setDataSourceId={setDataSourceId}
+                        binding={binding}
+                        setBinding={setBinding}
+                      />
+                      {previewError && (
+                        <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                          {previewError}
+                        </div>
+                      )}
+                      {!previewError && binding.table && (
+                        <div className="text-xs text-slate-500">
+                          {previewLoading ? "Loading…" : `${previewItems.length} row(s) matched.`}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
 
             {tab === "design" &&
               (initial.type === "HERO_SLIDER" ? (
                 <HeroSettingsForm
                   settings={settings as unknown as HeroSettings}
+                  set={setSettingsPatch}
+                />
+              ) : initial.type === "BANNER" ? (
+                <BannerSettingsForm
+                  settings={settings as unknown as BannerSettings}
                   set={setSettingsPatch}
                 />
               ) : (
@@ -318,25 +338,37 @@ export function Editor({
           </div>
         </div>
 
-        {/* Live preview */}
+        {/* Live preview / banner canvas */}
         <div className="lg:sticky lg:top-6 lg:self-start">
           <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-            <span>Live preview</span>
+            <span>{isBanner ? "Banner canvas — drag & resize" : "Live preview"}</span>
             {contentSource === "DATA" && previewLoading && (
               <span className="inline-flex items-center gap-1">
                 <Loader2 size={12} className="animate-spin" /> updating
               </span>
             )}
           </div>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-            {previewData.length === 0 && contentSource === "DATA" ? (
-              <div className="grid h-40 place-items-center text-sm text-slate-400">
-                {binding.table ? "No rows matched your query." : "Select a data source and table."}
-              </div>
-            ) : (
-              <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
-            )}
-          </div>
+          {isBanner ? (
+            <BannerCanvas
+              settings={settings as unknown as BannerSettings}
+              items={items as BannerElement[]}
+              setItems={(v) => setItems(v as Record<string, unknown>[])}
+              selectedId={selectedElId}
+              setSelectedId={setSelectedElId}
+            />
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+              {previewData.length === 0 && contentSource === "DATA" ? (
+                <div className="grid h-40 place-items-center text-sm text-slate-400">
+                  {binding.table
+                    ? "No rows matched your query."
+                    : "Select a data source and table."}
+                </div>
+              ) : (
+                <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,12 +1,16 @@
 "use client";
 
 import {
+  bannerElementSchema,
+  bannerSettingsSchema,
   heroSettingsSchema,
   heroSlideSchema,
   newsItemSchema,
   newsSettingsSchema,
+  type BannerElement,
   type WidgetTypeKey,
 } from "@/lib/widgets/registry";
+import { Banner } from "./Banner";
 import { HeroSlider } from "./HeroSlider";
 import { LatestNews } from "./LatestNews";
 
@@ -29,6 +33,14 @@ export function WidgetRenderer({
       />
     );
   }
+
+  if (type === "BANNER") {
+    const elements = (items ?? [])
+      .map((x) => bannerElementSchema.safeParse(x))
+      .flatMap((r) => (r.success ? [r.data as BannerElement] : []));
+    return <Banner settings={bannerSettingsSchema.parse(settings ?? {})} items={elements} />;
+  }
+
   return (
     <LatestNews
       settings={newsSettingsSchema.parse(settings ?? {})}

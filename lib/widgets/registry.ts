@@ -4,7 +4,7 @@
 // Pure zod/types only — safe in both client and server bundles.
 import { z } from "zod";
 
-export type WidgetTypeKey = "HERO_SLIDER" | "LATEST_NEWS";
+export type WidgetTypeKey = "HERO_SLIDER" | "LATEST_NEWS" | "BANNER";
 
 /* ----------------------------- Hero Slider ----------------------------- */
 
@@ -60,6 +60,68 @@ export const newsSettingsSchema = z.object({
   cardStyle: z.enum(["shadow", "border", "flat"]).default("shadow"),
 });
 export type NewsSettings = z.infer<typeof newsSettingsSchema>;
+
+/* ------------------------------- Banner ------------------------------- */
+// A free-form banner: absolutely-positioned elements on a fixed design canvas
+// (width x height) that scales responsively. Each element is one WidgetItem.
+
+const bannerElementBase = {
+  id: z.string(),
+  x: z.number().default(0),
+  y: z.number().default(0),
+  w: z.number().default(200),
+  h: z.number().default(80),
+};
+
+export const bannerTextSchema = z.object({
+  ...bannerElementBase,
+  type: z.literal("text"),
+  text: z.string().default("Text"),
+  color: z.string().default("#ffffff"),
+  fontSize: z.number().default(32),
+  fontWeight: z.enum(["400", "600", "700", "800"]).default("700"),
+  align: z.enum(["left", "center", "right"]).default("center"),
+  bg: z.string().default("transparent"),
+});
+
+export const bannerImageSchema = z.object({
+  ...bannerElementBase,
+  type: z.literal("image"),
+  imageUrl: z.string().default(""),
+  fit: z.enum(["cover", "contain"]).default("cover"),
+  rounded: z.number().default(0),
+});
+
+export const bannerButtonSchema = z.object({
+  ...bannerElementBase,
+  type: z.literal("button"),
+  text: z.string().default("Button"),
+  url: z.string().default(""),
+  bg: z.string().default("#094582"),
+  color: z.string().default("#ffffff"),
+  fontSize: z.number().default(16),
+  rounded: z.number().default(8),
+});
+
+export const bannerElementSchema = z.discriminatedUnion("type", [
+  bannerTextSchema,
+  bannerImageSchema,
+  bannerButtonSchema,
+]);
+export type BannerElement = z.infer<typeof bannerElementSchema>;
+export type BannerElementType = BannerElement["type"];
+
+export const bannerSettingsSchema = z.object({
+  widthMode: z.enum(["full", "fixed"]).default("full"),
+  width: z.number().int().min(320).max(2000).default(1200), // design width (= max width when fixed)
+  height: z.number().int().min(80).max(1200).default(360),
+  bgColor: z.string().default("#0b3f70"),
+  bgImage: z.string().default(""),
+  bgFit: z.enum(["cover", "contain"]).default("cover"),
+  overlayOpacity: z.number().min(0).max(1).default(0),
+  rounded: z.number().int().min(0).max(64).default(0),
+});
+export type BannerSettings = z.infer<typeof bannerSettingsSchema>;
 
 /* --------------------------- Data binding ----------------------------- */
 
@@ -133,6 +195,27 @@ export const WIDGETS: Record<WidgetTypeKey, WidgetDef> = {
       { key: "url", label: "Link URL" },
       { key: "category", label: "Category" },
     ],
+  },
+  BANNER: {
+    key: "BANNER",
+    label: "Banner",
+    description: "A free-form banner — position images, text and buttons on a canvas.",
+    settingsSchema: bannerSettingsSchema,
+    itemSchema: bannerElementSchema,
+    defaultSettings: bannerSettingsSchema.parse({}),
+    defaultItem: bannerTextSchema.parse({
+      id: "t1",
+      type: "text",
+      x: 64,
+      y: 130,
+      w: 560,
+      h: 100,
+      text: "Your banner headline",
+      fontSize: 46,
+      fontWeight: "800",
+      align: "left",
+    }),
+    dataFields: [],
   },
 };
 
