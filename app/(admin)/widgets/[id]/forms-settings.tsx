@@ -10,6 +10,7 @@ import {
   ToggleField,
 } from "@/components/admin/fields";
 import { ImageField } from "@/components/admin/ImageField";
+import { UrlField } from "@/components/admin/UrlField";
 import type {
   HeroSettings,
   HeroSlide,
@@ -195,7 +196,7 @@ export function HeroContentEditor({
             <TextField label="Heading" value={s.heading} onChange={(v) => ops.patch(i, { heading: v })} />
             <TextField label="Subheading" value={s.subheading} onChange={(v) => ops.patch(i, { subheading: v })} />
             <TextField label="Button text" value={s.buttonText} onChange={(v) => ops.patch(i, { buttonText: v })} />
-            <TextField label="Button URL" value={s.buttonUrl} onChange={(v) => ops.patch(i, { buttonUrl: v })} />
+            <UrlField label="Button URL" value={s.buttonUrl} onChange={(v) => ops.patch(i, { buttonUrl: v })} />
           </div>
         </ItemShell>
       ))}
@@ -238,7 +239,7 @@ export function NewsContentEditor({
               <TextField label="Excerpt" value={it.excerpt} onChange={(v) => ops.patch(i, { excerpt: v })} textarea />
             </div>
             <div className="col-span-2">
-              <TextField label="Link URL" value={it.url} onChange={(v) => ops.patch(i, { url: v })} placeholder="https://…" />
+              <UrlField label="Link URL" value={it.url} onChange={(v) => ops.patch(i, { url: v })} />
             </div>
           </div>
         </ItemShell>

@@ -9,6 +9,7 @@
 //
 // Select explicitly with STORAGE_TYPE=webdav|combined, otherwise it's inferred
 // from the URL.
+import { XMLParser } from "fast-xml-parser";
 import { nanoid } from "nanoid";
 
 type Mode = "webdav" | "combined";
@@ -143,4 +144,156 @@ async function uploadCombined(
   const dto = (await res.json()) as { url?: string | null };
   if (!dto.url) throw new Error("Storage did not return a public URL");
   return { url: dto.url };
+}
+
+/* ------------------------------ Browsing ------------------------------ */
+
+export type StorageEntry = {
+  name: string;
+  isDir: boolean;
+  path: string; // navigation key (webdav: relative path; combined: folder id)
+  url: string | null; // public URL (files only)
+  size?: number;
+  mime?: string;
+};
+
+export type StorageListing = {
+  path: string;
+  parentPath: string | null;
+  entries: StorageEntry[];
+};
+
+export async function listStorage(path: string): Promise<StorageListing> {
+  const cfg = readConfig();
+  if (!cfg) throw new Error("Image storage is not configured");
+  return cfg.mode === "webdav" ? listWebdav(cfg, path) : listCombined(cfg, path);
+}
+
+function normalizeRel(path: string): string {
+  return (path || "").replace(/^\/+|\/+$/g, "");
+}
+
+function parentOf(rel: string): string | null {
+  if (!rel) return null;
+  const i = rel.lastIndexOf("/");
+  return i === -1 ? "" : rel.slice(0, i);
+}
+
+function sortEntries(entries: StorageEntry[]): StorageEntry[] {
+  return entries.sort((a, b) =>
+    a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1,
+  );
+}
+
+const xmlParser = new XMLParser({ removeNSPrefix: true, ignoreAttributes: true });
+
+function basePathPrefix(cfg: StorageConfig): string {
+  try {
+    return new URL(cfg.base).pathname.replace(/\/+$/, ""); // e.g. "/dav"
+  } catch {
+    return "";
+  }
+}
+
+async function listWebdav(cfg: StorageConfig, path: string): Promise<StorageListing> {
+  const rel = normalizeRel(path);
+  const url = `${cfg.base}/${rel ? rel + "/" : ""}`;
+  const auth = "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
+  const res = await fetch(url, {
+    method: "PROPFIND",
+    headers: { Authorization: auth, Depth: "1", "Content-Type": "application/xml" },
+    body: `<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><displayname/><resourcetype/><getcontentlength/><getcontenttype/></prop></propfind>`,
+  });
+  if (res.status !== 207) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Browse failed (${res.status})${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+  }
+  const entries = parsePropfind(await res.text(), cfg, rel);
+  return { path: rel, parentPath: parentOf(rel), entries };
+}
+
+function parsePropfind(body: string, cfg: StorageConfig, rel: string): StorageEntry[] {
+  const doc = xmlParser.parse(body) as Record<string, unknown>;
+  const multistatus = (doc.multistatus ?? {}) as Record<string, unknown>;
+  const raw = multistatus.response ?? [];
+  const responses = (Array.isArray(raw) ? raw : [raw]) as Array<Record<string, unknown>>;
+  const prefix = basePathPrefix(cfg);
+  const entries: StorageEntry[] = [];
+
+  for (const r of responses) {
+    const href = r.href;
+    if (typeof href !== "string") continue;
+
+    let pathname = href;
+    try {
+      pathname = new URL(href, cfg.base).pathname;
+    } catch {
+      /* relative href, keep as-is */
+    }
+    let p = decodeURIComponent(pathname);
+    if (prefix && p.startsWith(prefix)) p = p.slice(prefix.length);
+    const relPath = p.replace(/^\/+|\/+$/g, "");
+    if (relPath === rel) continue; // the collection itself
+
+    const propstatArr = Array.isArray(r.propstat) ? r.propstat : [r.propstat];
+    const prop = (propstatArr
+      .map((ps) => (ps as Record<string, unknown> | undefined)?.prop)
+      .find(Boolean) ?? {}) as Record<string, unknown>;
+
+    const rt = prop.resourcetype;
+    const isDir = typeof rt === "object" && rt !== null && "collection" in rt;
+    const name =
+      (typeof prop.displayname === "string" && prop.displayname) ||
+      relPath.split("/").pop() ||
+      relPath;
+    const size = prop.getcontentlength != null ? Number(prop.getcontentlength) : undefined;
+    const mime = typeof prop.getcontenttype === "string" ? prop.getcontenttype : undefined;
+
+    entries.push({
+      name,
+      isDir,
+      path: relPath,
+      url: isDir
+        ? null
+        : `${cfg.publicBase}/${relPath.split("/").map(encodeURIComponent).join("/")}`,
+      size: Number.isFinite(size) ? size : undefined,
+      mime,
+    });
+  }
+  return sortEntries(entries);
+}
+
+async function listCombined(cfg: StorageConfig, path: string): Promise<StorageListing> {
+  const folderId = normalizeRel(path) || "root";
+  const doList = (cookie: string) =>
+    fetch(`${cfg.base}/api/files/${encodeURIComponent(folderId)}`, { headers: { Cookie: cookie } });
+  let res = await doList(cookieCache ?? (await combinedLogin(cfg)));
+  if (res.status === 401) {
+    cookieCache = null;
+    res = await doList(await combinedLogin(cfg));
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Browse failed (${res.status})${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+  }
+  const data = (await res.json()) as {
+    folder?: { parentId: string | null };
+    children?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      url: string | null;
+      size?: number;
+      mimeType?: string;
+    }>;
+  };
+  const entries: StorageEntry[] = (data.children ?? []).map((c) => ({
+    name: c.name,
+    isDir: c.type === "folder",
+    path: c.id,
+    url: c.type === "file" ? c.url : null,
+    size: c.size,
+    mime: c.mimeType,
+  }));
+  return { path: folderId, parentPath: data.folder?.parentId ?? null, entries: sortEntries(entries) };
 }

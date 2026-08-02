@@ -20,6 +20,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "fast-xml-parser": "^5.10.1",
     "jose": "^6.2.4",
     "lucide-react": "^1.26.0",
     "mysql2": "^3.23.1",
