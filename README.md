@@ -97,17 +97,26 @@ Uploads are streamed by the CMS server to a running
 across its backends and returns a stable public CDN URL (`/f/<token>`). That URL is saved on the
 widget and used directly in embeds.
 
+Two backends are supported and selected automatically:
+
+- **WebDAV** — a `STORAGE_BASE_URL` ending in `/dav` is auto-detected; uploads use HTTP `PUT` with
+  Basic Auth.
+- **Combined Storage** — a Combined Storage service; the CMS uses its admin-session API.
+
 Enable it in `.env` (leave blank to keep image fields URL-only):
 
 | Variable | Purpose |
 | --- | --- |
-| `STORAGE_BASE_URL` | Base URL of the Combined Storage service, e.g. `http://localhost:4000` |
-| `STORAGE_USERNAME` / `STORAGE_PASSWORD` | Its admin credentials |
-| `STORAGE_UPLOAD_PARENT` | Folder id to upload into (`root` = top level) |
+| `STORAGE_BASE_URL` | WebDAV endpoint (`https://cdn.example.com/dav`) or Combined Storage base URL |
+| `STORAGE_USERNAME` / `STORAGE_PASSWORD` | Credentials for that endpoint |
+| `STORAGE_UPLOAD_PARENT` | Upload target — `root`, or a sub-folder / sub-path |
+| `STORAGE_TYPE` | *(optional)* force `webdav` or `combined` instead of inferring from the URL |
+| `STORAGE_PUBLIC_URL` | *(optional)* public base URL, if files are served from a different path than uploaded to |
 
-The CMS talks to Combined Storage server-to-server (admin session cookie, cached and refreshed on
-expiry) — browsers never see those credentials. Ensure the storage service has at least one enabled
-backend so uploads have somewhere to land.
+Uploads happen server-to-server, so browsers never see the credentials. **The resulting image URLs
+must be publicly readable without auth** — they're loaded by `<img>` on embedding sites. For WebDAV,
+make sure the upload path (or a `STORAGE_PUBLIC_URL` you point at) serves `GET` publicly; for Combined
+Storage, ensure it has at least one enabled backend.
 
 ## Scripts
 
