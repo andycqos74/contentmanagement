@@ -26,6 +26,13 @@ type StorageConfig = {
 // Combined Storage session cookie cache (unused in webdav mode).
 let cookieCache: string | null = null;
 
+// Remove a trailing `/dav` mount segment so the public (read) base points at the
+// non-authenticated path. A WebDAV mount at https://host/dav is typically served
+// publicly (no login) at https://host, so that is the friendly URL to store.
+function stripDavSegment(url: string): string {
+  return url.replace(/\/dav$/i, "");
+}
+
 function readConfig(): StorageConfig | null {
   const base = process.env.STORAGE_BASE_URL?.replace(/\/+$/, "");
   const username = process.env.STORAGE_USERNAME;
@@ -40,7 +47,11 @@ function readConfig(): StorageConfig | null {
         ? "webdav"
         : "combined";
 
-  const publicBase = (process.env.STORAGE_PUBLIC_URL || base).replace(/\/+$/, "");
+  // Public read base: explicit override wins; otherwise default to the friendly
+  // (non-`/dav`) URL in webdav mode so stored image links never require a login.
+  const publicBase = (
+    process.env.STORAGE_PUBLIC_URL || (mode === "webdav" ? stripDavSegment(base) : base)
+  ).replace(/\/+$/, "");
   return {
     base,
     publicBase,
@@ -53,6 +64,46 @@ function readConfig(): StorageConfig | null {
 
 export function isStorageConfigured(): boolean {
   return readConfig() !== null;
+}
+
+// A rewriter that maps a URL under the authenticated storage base to the public
+// (friendly) base, or null when there is nothing to rewrite (no config, or the
+// two bases are identical).
+function publicRewriter(): ((url: string) => string) | null {
+  const cfg = readConfig();
+  if (!cfg || cfg.base === cfg.publicBase) return null;
+  const { base, publicBase } = cfg;
+  return (url: string) => {
+    if (typeof url !== "string") return url;
+    if (url === base) return publicBase;
+    if (url.startsWith(base + "/")) return publicBase + url.slice(base.length);
+    return url;
+  };
+}
+
+// Rewrite a single URL to its public form (no-op if it isn't a storage URL).
+export function toPublicUrl(url: string): string {
+  const rewrite = publicRewriter();
+  return rewrite ? rewrite(url) : url;
+}
+
+// Deep-rewrite every storage URL found in arbitrary JSON (widget settings/items)
+// so a `/dav` link can never be shipped to an embed. Only strings that begin with
+// the exact storage base are touched, so it is safe on any value.
+export function rewritePublicUrls<T>(value: T): T {
+  const rewrite = publicRewriter();
+  if (!rewrite) return value;
+  const visit = (v: unknown): unknown => {
+    if (typeof v === "string") return rewrite(v);
+    if (Array.isArray(v)) return v.map(visit);
+    if (v && typeof v === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = visit(val);
+      return out;
+    }
+    return v;
+  };
+  return visit(value) as T;
 }
 
 export type UploadResult = { url: string };

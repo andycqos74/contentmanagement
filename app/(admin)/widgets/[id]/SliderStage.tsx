@@ -1,7 +1,7 @@
 "use client";
 
 import { nanoid } from "nanoid";
-import { Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import type {
   BannerElement,
   BannerSettings,
@@ -86,6 +86,14 @@ export function SliderStage({
     if (!slide) return;
     setItems(items.map((s, i) => (i === idx ? { ...s, hidden: !s.hidden } : s)));
   };
+  const moveSlide = (dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= items.length) return;
+    const copy = items.slice();
+    [copy[idx], copy[j]] = [copy[j], copy[idx]];
+    setItems(copy);
+    switchSlide(j);
+  };
 
   return (
     <div>
@@ -111,6 +119,24 @@ export function SliderStage({
           <Plus size={13} /> Slide
         </button>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => moveSlide(-1)}
+            disabled={idx <= 0}
+            title="Move slide earlier"
+            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => moveSlide(1)}
+            disabled={idx >= items.length - 1}
+            title="Move slide later"
+            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30"
+          >
+            <ChevronRight size={15} />
+          </button>
           <button
             type="button"
             onClick={toggleHidden}

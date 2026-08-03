@@ -1,5 +1,6 @@
 // Builds the payload served to embeds/preview from a widget row.
 import { prisma } from "@/lib/db";
+import { rewritePublicUrls } from "@/lib/storage";
 import { resolveContent } from "./resolve-content";
 import { getWidgetDef, type DataBinding, type WidgetTypeKey } from "./registry";
 
@@ -54,7 +55,12 @@ export async function getPublishedWidget(id: string): Promise<ServedWidget | nul
     dataSourceId: pub.dataSourceId,
     dataBinding: pub.dataBinding ?? null,
   });
-  return { id: widget.id, type, settings, items: stripHidden(type, items) };
+  return {
+    id: widget.id,
+    type,
+    settings: rewritePublicUrls(settings),
+    items: rewritePublicUrls(stripHidden(type, items)),
+  };
 }
 
 // Payload from the DRAFT/working state — used only by auth-gated preview.
@@ -74,5 +80,10 @@ export async function getDraftWidget(id: string): Promise<ServedWidget | null> {
     dataSourceId: widget.dataSourceId,
     dataBinding: (widget.dataBinding as DataBinding | null) ?? null,
   });
-  return { id: widget.id, type, settings, items: stripHidden(type, items) };
+  return {
+    id: widget.id,
+    type,
+    settings: rewritePublicUrls(settings),
+    items: rewritePublicUrls(stripHidden(type, items)),
+  };
 }

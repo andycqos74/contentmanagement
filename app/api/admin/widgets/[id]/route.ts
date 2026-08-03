@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/api";
+import { rewritePublicUrls } from "@/lib/storage";
 import {
   dataBindingSchema,
   getWidgetDef,
@@ -40,7 +41,9 @@ export async function PATCH(
 
   if (typeof body.name === "string") data.name = body.name.trim() || "Untitled widget";
   if (body.settings !== undefined) {
-    data.settings = def.settingsSchema.parse(body.settings) as Prisma.InputJsonValue;
+    data.settings = rewritePublicUrls(
+      def.settingsSchema.parse(body.settings),
+    ) as Prisma.InputJsonValue;
   }
   if (body.contentSource === "MANUAL" || body.contentSource === "DATA") {
     data.contentSource = body.contentSource;
@@ -66,7 +69,7 @@ export async function PATCH(
           data: body.items.map((it: unknown, i: number) => ({
             widgetId: id,
             sortOrder: i,
-            data: def.itemSchema.parse(it ?? {}) as Prisma.InputJsonValue,
+            data: rewritePublicUrls(def.itemSchema.parse(it ?? {})) as Prisma.InputJsonValue,
           })),
         });
       }
