@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { Plus, Trash2 } from "lucide-react";
 import {
   ColorField,
+  FontField,
   RangeField,
   SelectField,
   TextField,
@@ -52,6 +53,7 @@ export function CookieConsentForm({
           onChange={(v) => set({ buttonTextColor: v })}
         />
         <RangeField label="Corner radius" min={0} max={32} value={settings.rounded} onChange={(v) => set({ rounded: v })} suffix="px" />
+        <FontField value={settings.fontFamily} onChange={(v) => set({ fontFamily: v })} />
         <TextField
           label="Consent version"
           value={settings.version}

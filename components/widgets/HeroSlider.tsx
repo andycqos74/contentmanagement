@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { HeroSettings, HeroSlide } from "@/lib/widgets/registry";
+import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 
 export function HeroSlider({
   settings,
@@ -14,6 +15,8 @@ export function HeroSlider({
   const count = items.length;
   const [index, setIndex] = useState(0);
   const startX = useRef<number | null>(null);
+
+  useEffect(() => ensureFontLoaded(settings.fontFamily), [settings.fontFamily]);
 
   const go = useCallback(
     (i: number) => setIndex(count ? ((i % count) + count) % count : 0),
@@ -58,6 +61,7 @@ export function HeroSlider({
         borderRadius: settings.rounded,
         maxWidth: settings.fullWidth ? "100%" : 1200,
         margin: settings.fullWidth ? undefined : "0 auto",
+        fontFamily: fontStack(settings.fontFamily),
       }}
       role="region"
       aria-roledescription="carousel"

@@ -1,7 +1,8 @@
 "use client";
 
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { BannerElement, BannerSettings } from "@/lib/widgets/registry";
+import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 import { BannerElementView, bannerBackgroundStyle } from "./banner/BannerElementView";
 
 // Renders the banner by scaling a fixed design canvas (width x height) to the
@@ -17,6 +18,8 @@ export function Banner({
   const [scale, setScale] = useState<number | null>(null);
   const cw = Math.max(1, settings.width || 1);
   const ch = Math.max(1, settings.height || 1);
+
+  useEffect(() => ensureFontLoaded(settings.fontFamily), [settings.fontFamily]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -43,6 +46,7 @@ export function Banner({
         position: "relative",
         overflow: "hidden",
         borderRadius: settings.rounded,
+        fontFamily: fontStack(settings.fontFamily),
         visibility: scale === null ? "hidden" : "visible",
       }}
     >

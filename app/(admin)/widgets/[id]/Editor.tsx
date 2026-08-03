@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Copy, Database, Loader2, PencilLine, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Database,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  PencilLine,
+  Trash2,
+} from "lucide-react";
 import { WidgetRenderer } from "@/components/widgets/WidgetRenderer";
 import {
   dataBindingSchema,
@@ -87,6 +97,7 @@ export function Editor({
   const [copied, setCopied] = useState(false);
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -216,9 +227,9 @@ export function Editor({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
+      <div className={`grid gap-6 ${expanded ? "grid-cols-1" : "lg:grid-cols-[minmax(0,420px)_1fr]"}`}>
         {/* Editing panel */}
-        <div className="rounded-xl border border-slate-200 bg-white">
+        <div className={`rounded-xl border border-slate-200 bg-white ${expanded ? "order-2" : ""}`}>
           <div className="flex border-b border-slate-200 text-sm">
             {(["content", "design", "embed"] as const).map((t) => (
               <button
@@ -377,14 +388,25 @@ export function Editor({
         </div>
 
         {/* Live preview / banner canvas */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        <div className={expanded ? "order-1" : "lg:sticky lg:top-6 lg:self-start"}>
           <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
             <span>{isBanner || isSlider ? "Canvas — drag & resize" : "Live preview"}</span>
-            {contentSource === "DATA" && previewLoading && (
-              <span className="inline-flex items-center gap-1">
-                <Loader2 size={12} className="animate-spin" /> updating
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {contentSource === "DATA" && previewLoading && (
+                <span className="inline-flex items-center gap-1">
+                  <Loader2 size={12} className="animate-spin" /> updating
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                title={expanded ? "Collapse editor width" : "Expand canvas to full width"}
+              >
+                {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                {expanded ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
           <ErrorBoundary resetKey={settings}>
           {isBanner ? (

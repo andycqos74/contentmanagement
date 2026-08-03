@@ -35,6 +35,7 @@ export const heroSettingsSchema = z.object({
   textPosition: z.enum(["left", "center", "right"]).default("center"),
   rounded: z.number().int().min(0).max(48).default(12),
   accentColor: z.string().default("#094582"),
+  fontFamily: z.string().default("system"),
 });
 export type HeroSettings = z.infer<typeof heroSettingsSchema>;
 
@@ -63,6 +64,7 @@ export const newsSettingsSchema = z.object({
   dateFormat: z.enum(["DD/MM/YYYY", "MMM D, YYYY", "relative"]).default("DD/MM/YYYY"),
   accentColor: z.string().default("#094582"),
   cardStyle: z.enum(["shadow", "border", "flat"]).default("shadow"),
+  fontFamily: z.string().default("system"),
 });
 export type NewsSettings = z.infer<typeof newsSettingsSchema>;
 
@@ -88,6 +90,7 @@ export const bannerTextSchema = z.object({
   align: z.enum(["left", "center", "right"]).default("center"),
   bgColor: z.string().default("#000000"),
   bgOpacity: z.number().min(0).max(1).default(0),
+  rounded: z.number().default(0),
 });
 
 export const bannerImageSchema = z.object({
@@ -125,8 +128,11 @@ export const bannerSettingsSchema = z.object({
   bgImage: z.string().default(""),
   bgFit: z.enum(["cover", "contain", "tile"]).default("cover"),
   bgTileSize: z.number().int().min(0).max(1000).default(0),
+  bgPosX: z.number().min(0).max(100).default(50),
+  bgPosY: z.number().min(0).max(100).default(50),
   overlayOpacity: z.number().min(0).max(1).default(0),
   rounded: z.number().int().min(0).max(64).default(0),
+  fontFamily: z.string().default("system"),
 });
 export type BannerSettings = z.infer<typeof bannerSettingsSchema>;
 
@@ -139,6 +145,8 @@ export const sliderSlideSchema = z.object({
   bgImage: z.string().default(""),
   bgFit: z.enum(["cover", "contain", "tile"]).default("cover"),
   bgTileSize: z.number().int().min(0).max(1000).default(0),
+  bgPosX: z.number().min(0).max(100).default(50),
+  bgPosY: z.number().min(0).max(100).default(50),
   overlayOpacity: z.number().min(0).max(1).default(0),
   elements: z.array(bannerElementSchema).default([]),
 });
@@ -154,6 +162,7 @@ export const sliderSettingsSchema = z.object({
   transition: z.enum(["slide", "fade"]).default("slide"),
   showArrows: z.boolean().default(true),
   showDots: z.boolean().default(true),
+  fontFamily: z.string().default("system"),
 });
 export type SliderSettings = z.infer<typeof sliderSettingsSchema>;
 
@@ -211,6 +220,7 @@ export const cookieConsentSettingsSchema = z.object({
   accentColor: z.string().default("#094582"),
   buttonTextColor: z.string().default("#ffffff"),
   rounded: z.number().int().min(0).max(32).default(12),
+  fontFamily: z.string().default("system"),
   version: z.string().default("1"),
 });
 export type CookieConsentSettings = z.infer<typeof cookieConsentSettingsSchema>;

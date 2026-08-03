@@ -39,7 +39,10 @@ export function SliderStage({
     bgImage: slide?.bgImage ?? "",
     bgFit: slide?.bgFit ?? "cover",
     bgTileSize: slide?.bgTileSize ?? 0,
+    bgPosX: slide?.bgPosX ?? 50,
+    bgPosY: slide?.bgPosY ?? 50,
     overlayOpacity: slide?.overlayOpacity ?? 0,
+    fontFamily: settings.fontFamily,
   };
 
   const setElements = (els: BannerElement[]) =>
@@ -55,6 +58,8 @@ export function SliderStage({
       bgImage: "",
       bgFit: "cover",
       bgTileSize: 0,
+      bgPosX: 50,
+      bgPosY: 50,
       overlayOpacity: 0,
       elements: [],
     };

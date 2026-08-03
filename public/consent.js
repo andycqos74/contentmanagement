@@ -23,6 +23,41 @@
   var KEY = "cms-cookie-consent:" + id;
   var hostEl = null;
 
+  // Mirror of lib/widgets/fonts.ts (id -> css stack + optional Google family).
+  var FONTS = {
+    system: { stack: "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" },
+    inter: { stack: "'Inter',system-ui,sans-serif", google: "Inter:wght@400;500;600;700;800" },
+    roboto: { stack: "'Roboto',system-ui,sans-serif", google: "Roboto:wght@400;500;700;900" },
+    opensans: { stack: "'Open Sans',system-ui,sans-serif", google: "Open+Sans:wght@400;500;600;700;800" },
+    montserrat: { stack: "'Montserrat',system-ui,sans-serif", google: "Montserrat:wght@400;500;600;700;800" },
+    poppins: { stack: "'Poppins',system-ui,sans-serif", google: "Poppins:wght@400;500;600;700;800" },
+    oswald: { stack: "'Oswald',system-ui,sans-serif", google: "Oswald:wght@400;500;600;700" },
+    lato: { stack: "'Lato',system-ui,sans-serif", google: "Lato:wght@400;700;900" },
+    raleway: { stack: "'Raleway',system-ui,sans-serif", google: "Raleway:wght@400;500;600;700;800" },
+    playfair: { stack: "'Playfair Display',Georgia,serif", google: "Playfair+Display:wght@400;500;600;700;800" },
+    merriweather: { stack: "'Merriweather',Georgia,serif", google: "Merriweather:wght@400;700;900" },
+    lora: { stack: "'Lora',Georgia,serif", google: "Lora:wght@400;500;600;700" },
+  };
+  function fontDef(fid) {
+    return FONTS[fid] || FONTS.system;
+  }
+  function fontStack(fid) {
+    return fontDef(fid).stack;
+  }
+  function loadFont(fid) {
+    var f = fontDef(fid);
+    if (!f.google) return;
+    var domId = "cms-font-" + (fid || "system");
+    if (document.getElementById(domId)) return;
+    try {
+      var link = document.createElement("link");
+      link.id = domId;
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=" + f.google + "&display=swap";
+      document.head.appendChild(link);
+    } catch {}
+  }
+
   function read() {
     try {
       return JSON.parse(localStorage.getItem(KEY) || "null");
@@ -71,6 +106,7 @@
 
   function styles(s, isBar, pos) {
     var accent = s.accentColor || "#094582";
+    var font = fontStack(s.fontFamily);
     var wrapPos =
       pos === "top"
         ? "top:0;left:0;right:0;"
@@ -92,7 +128,9 @@
       radius +
       ";box-shadow:0 6px 30px rgba(0,0,0,.18);padding:18px 20px;max-width:" +
       (isBar ? "100%" : "420px") +
-      ";box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}" +
+      ";box-sizing:border-box;font-family:" +
+      font +
+      "}" +
       ".cc-main{display:flex;gap:20px;align-items:center;flex-wrap:wrap}" +
       (isBar ? "" : ".cc-main{flex-direction:column;align-items:stretch}") +
       ".cc-text{flex:1;min-width:240px}" +
@@ -220,7 +258,9 @@
       (s.accentColor || "#094582") +
       ";color:" +
       (s.buttonTextColor || "#fff") +
-      ";border:none;border-radius:20px;padding:8px 14px;font:600 13px system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2)}</style>" +
+      ";border:none;border-radius:20px;padding:8px 14px;font:600 13px " +
+      fontStack(s.fontFamily) +
+      ";cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2)}</style>" +
       '<button class="cc-reopen" type="button">' +
       esc(s.reopenText || "Cookie settings") +
       "</button>";
@@ -230,6 +270,7 @@
   }
 
   function start(s) {
+    loadFont(s.fontFamily);
     var existing = read();
     if (existing && String(existing.version) === String(s.version)) {
       signal(existing);

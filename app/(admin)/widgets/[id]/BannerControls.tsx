@@ -56,6 +56,7 @@ export function BannerControls({
       align: "center",
       bgColor: "#000000",
       bgOpacity: 0,
+      rounded: 0,
     });
   const addImage = () =>
     add({
@@ -205,6 +206,14 @@ export function BannerControls({
                 step={0.05}
                 value={sel.bgOpacity}
                 onChange={(v) => patch(sel.id, { bgOpacity: v })}
+              />
+              <RangeField
+                label="Box corner radius"
+                min={0}
+                max={100}
+                value={sel.rounded ?? 0}
+                onChange={(v) => patch(sel.id, { rounded: v })}
+                suffix="px"
               />
             </div>
           )}

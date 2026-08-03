@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { FONT_OPTIONS, ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 
 const inputCls =
   "w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-[#094582] focus:ring-1 focus:ring-[#094582]";
@@ -200,6 +201,38 @@ export function ToggleField({
         />
       </button>
     </label>
+  );
+}
+
+export function FontField({
+  label = "Font",
+  value,
+  onChange,
+}: {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  // Preload every offered webfont so the dropdown previews render in-face, and
+  // keep the selected font available for the live preview.
+  useEffect(() => {
+    FONT_OPTIONS.forEach((o) => ensureFontLoaded(o.value));
+  }, []);
+  return (
+    <Field label={label}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ fontFamily: fontStack(value) }}
+        className={inputCls}
+      >
+        {FONT_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value} style={{ fontFamily: fontStack(o.value) }}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 

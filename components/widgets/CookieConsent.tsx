@@ -1,13 +1,16 @@
 "use client";
 
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import type { CookieConsentSettings } from "@/lib/widgets/registry";
+import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 
 // Non-fixed preview of the consent bar for the editor. The live embed is rendered
 // by public/consent.js (fixed, in the host page, with localStorage + signalling).
 export function CookieConsent({ settings: s }: { settings: CookieConsentSettings }) {
   const [showPrefs, setShowPrefs] = useState(false);
   const isBar = s.layout === "bar";
+
+  useEffect(() => ensureFontLoaded(s.fontFamily), [s.fontFamily]);
 
   const btn = (bg: string, color: string, border?: string): CSSProperties => ({
     background: bg,
@@ -30,7 +33,7 @@ export function CookieConsent({ settings: s }: { settings: CookieConsentSettings
         padding: "18px 20px",
         maxWidth: isBar ? "100%" : 420,
         margin: isBar ? undefined : "0 auto",
-        fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        fontFamily: fontStack(s.fontFamily),
         boxSizing: "border-box",
       }}
     >

@@ -1,6 +1,7 @@
 "use client";
 
 import { ColorField, NumberField, RangeField, SelectField } from "@/components/admin/fields";
+import { FocalPointField } from "@/components/admin/FocalPointField";
 import { ImageField } from "@/components/admin/ImageField";
 import type { BannerElement, SliderSlide } from "@/lib/widgets/registry";
 import { BannerControls } from "./BannerControls";
@@ -38,6 +39,14 @@ export function SliderControls({
           value={slide.bgImage}
           onChange={(v) => patchSlide({ bgImage: v })}
         />
+        {slide.bgImage && (
+          <FocalPointField
+            imageUrl={slide.bgImage}
+            x={slide.bgPosX}
+            y={slide.bgPosY}
+            onChange={(x, y) => patchSlide({ bgPosX: x, bgPosY: y })}
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <ColorField
             label="Background colour"

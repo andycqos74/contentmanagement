@@ -1,6 +1,7 @@
 "use client";
 
-import { ColorField, NumberField, RangeField, SelectField } from "@/components/admin/fields";
+import { ColorField, FontField, NumberField, RangeField, SelectField } from "@/components/admin/fields";
+import { FocalPointField } from "@/components/admin/FocalPointField";
 import { ImageField } from "@/components/admin/ImageField";
 import type { BannerSettings } from "@/lib/widgets/registry";
 
@@ -44,6 +45,9 @@ export function BannerSettingsForm({
         onChange={(v) => set({ rounded: v })}
         suffix="px"
       />
+      <div className="col-span-2">
+        <FontField value={settings.fontFamily} onChange={(v) => set({ fontFamily: v })} />
+      </div>
       <ColorField
         label="Background colour"
         value={settings.bgColor}
@@ -75,6 +79,16 @@ export function BannerSettingsForm({
           onChange={(v) => set({ bgImage: v })}
         />
       </div>
+      {settings.bgImage && (
+        <div className="col-span-2">
+          <FocalPointField
+            imageUrl={settings.bgImage}
+            x={settings.bgPosX}
+            y={settings.bgPosY}
+            onChange={(x, y) => set({ bgPosX: x, bgPosY: y })}
+          />
+        </div>
+      )}
       <RangeField
         label="Overlay"
         min={0}

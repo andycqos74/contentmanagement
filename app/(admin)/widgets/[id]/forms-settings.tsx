@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import {
   ColorField,
+  FontField,
   NumberField,
   RangeField,
   SelectField,
@@ -52,6 +53,7 @@ export function HeroSettingsForm({
       <NumberField label="Autoplay interval (ms)" min={1000} max={20000} value={settings.intervalMs} onChange={(v) => set({ intervalMs: v })} />
       <RangeField label="Overlay" min={0} max={1} step={0.05} value={settings.overlayOpacity} onChange={(v) => set({ overlayOpacity: v })} />
       <ColorField label="Accent / button colour" value={settings.accentColor} onChange={(v) => set({ accentColor: v })} />
+      <FontField value={settings.fontFamily} onChange={(v) => set({ fontFamily: v })} />
       <div className="space-y-1 rounded-md border border-slate-200 p-2">
         <ToggleField label="Autoplay" value={settings.autoplay} onChange={(v) => set({ autoplay: v })} />
         <ToggleField label="Full width" value={settings.fullWidth} onChange={(v) => set({ fullWidth: v })} />
@@ -108,6 +110,7 @@ export function NewsSettingsForm({
       />
       <TextField label="Read more label" value={settings.readMoreText} onChange={(v) => set({ readMoreText: v })} />
       <ColorField label="Accent colour" value={settings.accentColor} onChange={(v) => set({ accentColor: v })} />
+      <FontField value={settings.fontFamily} onChange={(v) => set({ fontFamily: v })} />
       <div className="col-span-2 grid grid-cols-2 gap-x-4 rounded-md border border-slate-200 p-2 sm:grid-cols-4">
         <ToggleField label="Image" value={settings.showImage} onChange={(v) => set({ showImage: v })} />
         <ToggleField label="Date" value={settings.showDate} onChange={(v) => set({ showDate: v })} />

@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { NewsItem, NewsSettings } from "@/lib/widgets/registry";
+import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 import { formatDate, truncate } from "@/lib/widgets/format";
 
 function Card({ item, s }: { item: NewsItem; s: NewsSettings }) {
@@ -78,6 +79,9 @@ export function LatestNews({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const list = items.slice(0, settings.limit);
+  const font = fontStack(settings.fontFamily);
+
+  useEffect(() => ensureFontLoaded(settings.fontFamily), [settings.fontFamily]);
 
   if (list.length === 0) {
     return (
@@ -89,7 +93,7 @@ export function LatestNews({
 
   if (settings.layout === "list") {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" style={{ fontFamily: font }}>
         {list.map((item, i) => (
           <div key={i} className="[&>*]:flex [&>*]:gap-4">
             <div>
@@ -117,7 +121,7 @@ export function LatestNews({
 
   if (settings.layout === "carousel") {
     return (
-      <div className="relative">
+      <div className="relative" style={{ fontFamily: font }}>
         <div
           ref={scroller}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -154,7 +158,7 @@ export function LatestNews({
 
   // grid (default) — responsive via flex-basis + min width, no media queries needed
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-4" style={{ fontFamily: font }}>
       {list.map((item, i) => (
         <div
           key={i}

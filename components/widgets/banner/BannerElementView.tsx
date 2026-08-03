@@ -9,6 +9,8 @@ type BackgroundLike = {
   bgImage: string;
   bgFit: "cover" | "contain" | "tile";
   bgTileSize: number;
+  bgPosX?: number;
+  bgPosY?: number;
 };
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -25,10 +27,12 @@ function hexToRgba(hex: string, alpha: number): string {
 
 export function bannerBackgroundStyle(s: BackgroundLike): CSSProperties {
   if (!s.bgImage) return { backgroundColor: s.bgColor };
+  const posX = s.bgPosX ?? 50;
+  const posY = s.bgPosY ?? 50;
   const base: CSSProperties = {
     backgroundColor: s.bgColor,
     backgroundImage: `url(${s.bgImage})`,
-    backgroundPosition: "center",
+    backgroundPosition: `${posX}% ${posY}%`,
   };
   if (s.bgFit === "tile") {
     return {
@@ -61,6 +65,7 @@ export function BannerElementView({ el }: { el: BannerElement }) {
           fontWeight: Number(el.fontWeight),
           textAlign: el.align,
           background: el.bgOpacity > 0 ? hexToRgba(el.bgColor, el.bgOpacity) : "transparent",
+          borderRadius: el.rounded ?? 0,
           padding: 4,
           boxSizing: "border-box",
           overflow: "hidden",

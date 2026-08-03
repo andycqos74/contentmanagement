@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SliderSettings, SliderSlide } from "@/lib/widgets/registry";
+import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 import { BannerElementView, bannerBackgroundStyle } from "./banner/BannerElementView";
 
 // One slide: background + freely-placed elements, scaled from the design canvas.
@@ -65,6 +66,8 @@ export function Slider({ settings, items }: { settings: SliderSettings; items: S
   const cw = Math.max(1, settings.width || 1);
   const ch = Math.max(1, settings.height || 1);
 
+  useEffect(() => ensureFontLoaded(settings.fontFamily), [settings.fontFamily]);
+
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -107,6 +110,7 @@ export function Slider({ settings, items }: { settings: SliderSettings; items: S
         position: "relative",
         overflow: "hidden",
         borderRadius: settings.rounded,
+        fontFamily: fontStack(settings.fontFamily),
         visibility: scale === null ? "hidden" : "visible",
       }}
       onTouchStart={(e) => (startX.current = e.touches[0].clientX)}

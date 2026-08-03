@@ -1,6 +1,6 @@
 "use client";
 
-import { NumberField, RangeField, SelectField, ToggleField } from "@/components/admin/fields";
+import { FontField, NumberField, RangeField, SelectField, ToggleField } from "@/components/admin/fields";
 import type { SliderSettings } from "@/lib/widgets/registry";
 
 export function SliderSettingsForm({
@@ -30,6 +30,9 @@ export function SliderSettingsForm({
       />
       <NumberField label="Height (px)" min={80} max={1200} value={settings.height} onChange={(v) => set({ height: v })} />
       <RangeField label="Corner radius" min={0} max={64} value={settings.rounded} onChange={(v) => set({ rounded: v })} suffix="px" />
+      <div className="col-span-2">
+        <FontField value={settings.fontFamily} onChange={(v) => set({ fontFamily: v })} />
+      </div>
       <SelectField
         label="Transition"
         value={settings.transition}
