@@ -90,14 +90,35 @@ export function BannerElementView({ el }: { el: BannerElement }) {
           height: "100%",
           objectFit: el.fit,
           borderRadius: el.rounded,
+          opacity: el.opacity ?? 1,
           display: "block",
         }}
       />
     ) : (
       <div
-        style={{ width: "100%", height: "100%", background: "#e2e8f0", borderRadius: el.rounded }}
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "#e2e8f0",
+          borderRadius: el.rounded,
+          opacity: el.opacity ?? 1,
+        }}
       />
     );
+  }
+
+  if (el.type === "shape") {
+    const base: CSSProperties = {
+      width: "100%",
+      height: "100%",
+      background: hexToRgba(el.bgColor, el.bgOpacity),
+    };
+    if (el.shape === "ellipse") return <div style={{ ...base, borderRadius: "50%" }} />;
+    if (el.shape === "triangle")
+      return <div style={{ ...base, clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)" }} />;
+    if (el.shape === "diamond")
+      return <div style={{ ...base, clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" }} />;
+    return <div style={{ ...base, borderRadius: el.rounded }} />; // rectangle
   }
 
   // button

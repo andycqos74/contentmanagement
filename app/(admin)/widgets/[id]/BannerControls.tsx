@@ -11,6 +11,7 @@ import {
   MousePointerClick,
   Save,
   SendToBack,
+  Shapes,
   Trash2,
   Type,
 } from "lucide-react";
@@ -98,6 +99,21 @@ export function BannerControls({
       imageUrl: "",
       fit: "cover",
       rounded: 0,
+      opacity: 1,
+    });
+  const addShape = () =>
+    add({
+      id: nanoid(6),
+      type: "shape",
+      hidden: false,
+      x: stagger,
+      y: stagger,
+      w: 200,
+      h: 200,
+      shape: "rectangle",
+      bgColor: "#094582",
+      bgOpacity: 1,
+      rounded: 0,
     });
   const addButton = () =>
     add({
@@ -177,6 +193,9 @@ export function BannerControls({
         </button>
         <button type="button" onClick={addImage} className={addBtn}>
           <ImageIcon size={15} /> Image
+        </button>
+        <button type="button" onClick={addShape} className={addBtn}>
+          <Shapes size={15} /> Shape
         </button>
         <button type="button" onClick={addButton} className={addBtn}>
           <MousePointerClick size={15} /> Button
@@ -327,6 +346,53 @@ export function BannerControls({
                 value={sel.rounded}
                 onChange={(v) => patch(sel.id, { rounded: v })}
                 suffix="px"
+              />
+              <RangeField
+                label="Opacity"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sel.opacity ?? 1}
+                onChange={(v) => patch(sel.id, { opacity: v })}
+              />
+            </div>
+          )}
+
+          {sel.type === "shape" && (
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField
+                label="Shape"
+                value={sel.shape}
+                onChange={(v) => patch(sel.id, { shape: v })}
+                options={[
+                  { value: "rectangle", label: "Rectangle" },
+                  { value: "ellipse", label: "Ellipse / circle" },
+                  { value: "triangle", label: "Triangle" },
+                  { value: "diamond", label: "Diamond" },
+                ]}
+              />
+              {sel.shape === "rectangle" && (
+                <RangeField
+                  label="Corner radius"
+                  min={0}
+                  max={300}
+                  value={sel.rounded}
+                  onChange={(v) => patch(sel.id, { rounded: v })}
+                  suffix="px"
+                />
+              )}
+              <ColorField
+                label="Fill colour"
+                value={sel.bgColor}
+                onChange={(v) => patch(sel.id, { bgColor: v })}
+              />
+              <RangeField
+                label="Fill opacity"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sel.bgOpacity}
+                onChange={(v) => patch(sel.id, { bgOpacity: v })}
               />
             </div>
           )}

@@ -100,6 +100,16 @@ export const bannerImageSchema = z.object({
   imageUrl: z.string().default(""),
   fit: z.enum(["cover", "contain"]).default("cover"),
   rounded: z.number().default(0),
+  opacity: z.number().min(0).max(1).default(1),
+});
+
+export const bannerShapeSchema = z.object({
+  ...bannerElementBase,
+  type: z.literal("shape"),
+  shape: z.enum(["rectangle", "ellipse", "triangle", "diamond"]).default("rectangle"),
+  bgColor: z.string().default("#094582"),
+  bgOpacity: z.number().min(0).max(1).default(1),
+  rounded: z.number().default(0), // corner radius (rectangle only)
 });
 
 export const bannerButtonSchema = z.object({
@@ -116,6 +126,7 @@ export const bannerButtonSchema = z.object({
 export const bannerElementSchema = z.discriminatedUnion("type", [
   bannerTextSchema,
   bannerImageSchema,
+  bannerShapeSchema,
   bannerButtonSchema,
 ]);
 export type BannerElement = z.infer<typeof bannerElementSchema>;
@@ -129,7 +140,8 @@ export type BannerElementType = BannerElement["type"];
 
 export const PRESET_STYLE_KEYS: Record<BannerElementType, readonly string[]> = {
   text: ["w", "h", "color", "fontSize", "fontWeight", "align", "bgColor", "bgOpacity", "rounded"],
-  image: ["w", "h", "fit", "rounded"],
+  image: ["w", "h", "fit", "rounded", "opacity"],
+  shape: ["w", "h", "shape", "bgColor", "bgOpacity", "rounded"],
   button: ["w", "h", "bg", "color", "fontSize", "rounded"],
 };
 

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/api";
 import { PRESET_STYLE_KEYS, type BannerElementType } from "@/lib/widgets/registry";
 
-const TYPES: BannerElementType[] = ["text", "image", "button"];
+const TYPES: BannerElementType[] = ["text", "image", "shape", "button"];
 
 // Shared element style presets (used by the banner/slider element editor).
 export async function GET() {
