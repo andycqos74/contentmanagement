@@ -163,23 +163,33 @@ The repo ships a `Dockerfile` and a `portainer-stack.yml` that brings up the app
 MySQL database together. The app container applies the schema and seeds the admin user on start
 (see `docker-entrypoint.sh`).
 
+The stack pulls a **prebuilt image** from GHCR (built by `.github/workflows/docker-publish.yml` on
+every push to `main`), so Portainer only downloads a finished image and never compiles the app on
+your host — a Next.js build is memory/CPU heavy and can OOM-crash a small Docker host on redeploy.
+
+**One-time:** let the host pull the image — either make the GHCR package **public**
+(GitHub → your avatar → *Packages* → `contentmanagement` → *Package settings* → *Change visibility*),
+or keep it private and add a registry in Portainer (*Registries → Add registry → Custom*, URL
+`ghcr.io`, your GitHub username, and a PAT with `read:packages`).
+
 1. In Portainer: **Stacks → Add stack → Repository**.
    - **Repository URL:** `https://github.com/andycqos74/contentmanagement`
    - **Compose path:** `portainer-stack.yml`
 2. In **Environment variables**, add the values from [`.env.portainer.example`](./.env.portainer.example)
    — at minimum `AUTH_SECRET`, `DATASOURCE_ENC_KEY`, and a `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`
    to log in with. Change the MySQL passwords.
-3. **Deploy.** Portainer builds the image from the `Dockerfile` and starts both services. The web UI
-   is served on the host at `APP_PORT` (default **3000**) — open `http://<host>:3000` and sign in.
+3. **Deploy.** Portainer pulls the image and starts both services. The web UI is served on the host
+   at `APP_PORT` (default **3000**) — open `http://<host>:3000` and sign in.
 
-Data lives in the `cms-db` volume, so it survives restarts/redeploys. Put the app behind an HTTPS
-reverse proxy for production; it honours `X-Forwarded-Host` / `X-Forwarded-Proto` when building embed
-URLs (or set `APP_BASE_URL` explicitly).
+**Updating:** wait for the *Publish image* run to go green on the repo's **Actions** tab, then
+redeploy the stack in Portainer with **Re-pull image** enabled. Because there's no build step this is
+quick and light on the host. Data lives in the `cms-db` volume, so it survives restarts/redeploys.
+Put the app behind an HTTPS reverse proxy for production; it honours `X-Forwarded-Host` /
+`X-Forwarded-Proto` when building embed URLs (or set `APP_BASE_URL` explicitly).
 
-**Prebuilt image (optional).** `.github/workflows/docker-publish.yml` publishes the image to
-`ghcr.io/andycqos74/contentmanagement`. To pull it instead of building on the host, swap the `build:`
-block in `portainer-stack.yml` for the commented `image:` line (make the GHCR package public, or add
-registry credentials in Portainer).
+**Build on the host instead.** If you'd rather not use GHCR, comment out the `image:`/`pull_policy:`
+lines in `portainer-stack.yml` and uncomment the `build:` block — but note that's the resource-heavy
+path that can crash small hosts.
 
 To connect image uploads, deploy [Combined Storage](https://github.com/andycqos74/combinedstorage)
 (it has its own stack) and set `STORAGE_BASE_URL` / `STORAGE_USERNAME` / `STORAGE_PASSWORD`.

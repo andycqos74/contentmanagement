@@ -1,12 +1,29 @@
 # Portainer stack for the Widget CMS (contentmanagement).
 #
+# This stack runs a PREBUILT image from GitHub Container Registry (GHCR), built by
+# .github/workflows/docker-publish.yml on every push to main. Portainer only PULLS
+# the finished image — it does NOT compile the Next.js app on your host. Building
+# on the host is memory/CPU heavy and, on a small box, the kernel OOM-killer can
+# take down the Docker daemon on redeploy; pulling a prebuilt image avoids that.
+#
+# ONE-TIME setup so the host can pull the image (pick one):
+#   a) Make the GHCR package public (simplest):
+#        GitHub -> your avatar -> Packages -> contentmanagement -> Package settings
+#        -> Danger Zone -> Change visibility -> Public
+#   b) Keep it private and add a registry in Portainer:
+#        Portainer -> Registries -> Add registry -> Custom; URL = ghcr.io,
+#        username = your GitHub username, password = a PAT with `read:packages`.
+#
 # Deploy: Portainer -> Stacks -> Add stack -> "Repository"
 #   Repository URL : https://github.com/andycqos74/contentmanagement
 #   Compose path   : portainer-stack.yml
-# Then add the environment variables (see .env.portainer.example) in the stack's
-# "Environment variables" section and deploy. Portainer builds the app image from
-# the included Dockerfile and starts both services. The web UI is then reachable on
-# the host at the port set by APP_PORT (default 3000).
+# Add the environment variables (see .env.portainer.example) in the stack's
+# "Environment variables" section and deploy. The web UI is reachable on the host
+# at the port set by APP_PORT (default 3000).
+#
+# To update: wait for the "Publish image" run to go green on the repo's Actions
+# tab, then in Portainer redeploy the stack with "Re-pull image" enabled. With no
+# build step this is fast and light on the host.
 #
 # Required: AUTH_SECRET, DATASOURCE_ENC_KEY (see README for how to generate).
 
@@ -21,6 +38,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-this-db-pw}
     volumes:
       - cms-db:/var/lib/mysql
+    # Optional guard rail: cap memory so a spike can't take the host down.
+    # mem_limit: ${DB_MEM_LIMIT:-1g}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-change-this-root-pw}"]
       interval: 10s
@@ -29,13 +48,20 @@ services:
       start_period: 30s
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # Prefer a prebuilt image? Comment out `build:` above and uncomment this
-    # (published by .github/workflows/docker-publish.yml):
-    # image: ghcr.io/andycqos74/contentmanagement:latest
+    # Prebuilt image (published by .github/workflows/docker-publish.yml). To pin a
+    # specific build instead of the latest, use e.g. :sha-<short> — see the repo's
+    # Packages page for available tags.
+    image: ghcr.io/andycqos74/contentmanagement:latest
+    pull_policy: always
+    # Build on the host instead (heavy — can crash small boxes). To use this,
+    # comment out the two lines above and uncomment:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     restart: unless-stopped
+    # Optional guard rail: cap memory so a runaway can't take the host down. The
+    # app needs ~300-512MB at runtime; uncomment if your host is small.
+    # mem_limit: ${APP_MEM_LIMIT:-768m}
     depends_on:
       db:
         condition: service_healthy
