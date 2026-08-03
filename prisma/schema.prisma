@@ -12,6 +12,7 @@ enum WidgetType {
   HERO_SLIDER
   LATEST_NEWS
   BANNER
+  COOKIE_CONSENT
 }
 
 enum WidgetStatus {

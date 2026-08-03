@@ -75,6 +75,28 @@ The loader injects an auto-resizing iframe pointing at `/embed/WIDGET_ID`, so th
 is fully style-isolated from the host page. The raw JSON is also available at
 `GET /api/widgets/WIDGET_ID` (CORS-enabled).
 
+### Cookie Consent embed
+
+The Cookie Consent widget must overlay the host page (fixed) and store the choice in the
+host's own storage, so it uses a **different, inline** loader (not an iframe):
+
+```html
+<script src="https://YOUR_HOST/consent.js" data-cms-widget="WIDGET_ID" async></script>
+```
+
+`consent.js` renders the bar in a Shadow DOM, remembers the choice in `localStorage`
+(re-asking when you bump the consent **version**), and signals the decision to your site so
+you can enable/disable tracking:
+
+```js
+window.addEventListener("cms-cookie-consent", (e) => console.log(e.detail.categories));
+// or:  window.cmsCookieConsent = (data) => { ... }
+// also pushed to window.dataLayer as { event: "cms_cookie_consent", consent: {...} }
+```
+
+Non-essential categories default to **off**, and "Accept all" / "Reject all" are given equal
+prominence — following current GDPR guidance.
+
 ## Data-driven widgets
 
 Add a **Data source** (Data sources page) — a read-only MySQL connection. In a widget's

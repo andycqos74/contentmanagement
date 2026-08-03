@@ -10,6 +10,7 @@ import {
   getWidgetDef,
   type BannerElement,
   type BannerSettings,
+  type CookieConsentSettings,
   type DataBinding,
   type HeroSettings,
   type HeroSlide,
@@ -27,6 +28,7 @@ import { DataBindingForm } from "./DataBindingForm";
 import { BannerControls } from "./BannerControls";
 import { BannerCanvas } from "./BannerCanvas";
 import { BannerSettingsForm } from "./BannerSettingsForm";
+import { CookieConsentForm } from "./CookieConsentForm";
 
 type Initial = {
   id: string;
@@ -53,6 +55,7 @@ export function Editor({
   const router = useRouter();
   const def = getWidgetDef(initial.type);
   const isBanner = initial.type === "BANNER";
+  const isCookie = initial.type === "COOKIE_CONSENT";
 
   const [name, setName] = useState(initial.name);
   const [settings, setSettings] = useState<Record<string, unknown>>(() =>
@@ -146,7 +149,9 @@ export function Editor({
   const setSettingsPatch = (p: Record<string, unknown>) =>
     setSettings((s) => ({ ...s, ...p }));
 
-  const embedSnippet = `<div data-cms-widget="${initial.id}"></div>\n<script src="${appUrl}/embed.js" async></script>`;
+  const embedSnippet = isCookie
+    ? `<script src="${appUrl}/consent.js" data-cms-widget="${initial.id}" async></script>`
+    : `<div data-cms-widget="${initial.id}"></div>\n<script src="${appUrl}/embed.js" async></script>`;
 
   return (
     <div>
@@ -232,6 +237,12 @@ export function Editor({
                   selectedId={selectedElId}
                   setSelectedId={setSelectedElId}
                 />
+              ) : isCookie ? (
+                <CookieConsentForm
+                  settings={settings as unknown as CookieConsentSettings}
+                  set={setSettingsPatch}
+                  section="content"
+                />
               ) : (
                 <div className="space-y-4">
                   <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
@@ -292,6 +303,12 @@ export function Editor({
                 <BannerSettingsForm
                   settings={settings as unknown as BannerSettings}
                   set={setSettingsPatch}
+                />
+              ) : initial.type === "COOKIE_CONSENT" ? (
+                <CookieConsentForm
+                  settings={settings as unknown as CookieConsentSettings}
+                  set={setSettingsPatch}
+                  section="design"
                 />
               ) : (
                 <NewsSettingsForm

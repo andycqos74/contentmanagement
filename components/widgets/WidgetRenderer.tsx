@@ -3,6 +3,7 @@
 import {
   bannerElementSchema,
   bannerSettingsSchema,
+  cookieConsentSettingsSchema,
   heroSettingsSchema,
   heroSlideSchema,
   newsItemSchema,
@@ -11,6 +12,7 @@ import {
   type WidgetTypeKey,
 } from "@/lib/widgets/registry";
 import { Banner } from "./Banner";
+import { CookieConsent } from "./CookieConsent";
 import { HeroSlider } from "./HeroSlider";
 import { LatestNews } from "./LatestNews";
 
@@ -39,6 +41,10 @@ export function WidgetRenderer({
       .map((x) => bannerElementSchema.safeParse(x))
       .flatMap((r) => (r.success ? [r.data as BannerElement] : []));
     return <Banner settings={bannerSettingsSchema.parse(settings ?? {})} items={elements} />;
+  }
+
+  if (type === "COOKIE_CONSENT") {
+    return <CookieConsent settings={cookieConsentSettingsSchema.parse(settings ?? {})} />;
   }
 
   return (

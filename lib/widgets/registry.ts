@@ -4,7 +4,7 @@
 // Pure zod/types only — safe in both client and server bundles.
 import { z } from "zod";
 
-export type WidgetTypeKey = "HERO_SLIDER" | "LATEST_NEWS" | "BANNER";
+export type WidgetTypeKey = "HERO_SLIDER" | "LATEST_NEWS" | "BANNER" | "COOKIE_CONSENT";
 
 /* ----------------------------- Hero Slider ----------------------------- */
 
@@ -125,6 +125,64 @@ export const bannerSettingsSchema = z.object({
 });
 export type BannerSettings = z.infer<typeof bannerSettingsSchema>;
 
+/* --------------------------- Cookie consent --------------------------- */
+
+export const cookieCategorySchema = z.object({
+  key: z.string(),
+  label: z.string().default("Category"),
+  description: z.string().default(""),
+  required: z.boolean().default(false),
+});
+export type CookieCategory = z.infer<typeof cookieCategorySchema>;
+
+export const cookieConsentSettingsSchema = z.object({
+  position: z.enum(["bottom", "top", "bottom-left", "bottom-right"]).default("bottom"),
+  layout: z.enum(["bar", "box"]).default("bar"),
+  title: z.string().default("We value your privacy"),
+  message: z
+    .string()
+    .default(
+      "We use cookies to improve your experience, analyse traffic and personalise content. You can accept all, reject non-essential cookies, or manage your preferences.",
+    ),
+  policyText: z.string().default("Cookie Policy"),
+  policyUrl: z.string().default(""),
+  acceptText: z.string().default("Accept all"),
+  rejectText: z.string().default("Reject all"),
+  customizeText: z.string().default("Manage preferences"),
+  saveText: z.string().default("Save preferences"),
+  showReject: z.boolean().default(true),
+  showCustomize: z.boolean().default(true),
+  showReopen: z.boolean().default(true),
+  reopenText: z.string().default("Cookie settings"),
+  categories: z.array(cookieCategorySchema).default([
+    {
+      key: "necessary",
+      label: "Strictly necessary",
+      description: "Required for the site to work. Always active.",
+      required: true,
+    },
+    {
+      key: "analytics",
+      label: "Analytics",
+      description: "Help us understand how visitors use the site.",
+      required: false,
+    },
+    {
+      key: "marketing",
+      label: "Marketing",
+      description: "Used to deliver relevant advertising.",
+      required: false,
+    },
+  ]),
+  bgColor: z.string().default("#ffffff"),
+  textColor: z.string().default("#1e293b"),
+  accentColor: z.string().default("#094582"),
+  buttonTextColor: z.string().default("#ffffff"),
+  rounded: z.number().int().min(0).max(32).default(12),
+  version: z.string().default("1"),
+});
+export type CookieConsentSettings = z.infer<typeof cookieConsentSettingsSchema>;
+
 /* --------------------------- Data binding ----------------------------- */
 
 export const FILTER_OPS = ["=", "!=", ">", ">=", "<", "<=", "LIKE"] as const;
@@ -217,6 +275,16 @@ export const WIDGETS: Record<WidgetTypeKey, WidgetDef> = {
       fontWeight: "800",
       align: "left",
     }),
+    dataFields: [],
+  },
+  COOKIE_CONSENT: {
+    key: "COOKIE_CONSENT",
+    label: "Cookie Consent",
+    description: "A GDPR-style cookie consent bar with granular, opt-in categories.",
+    settingsSchema: cookieConsentSettingsSchema,
+    itemSchema: z.record(z.string(), z.unknown()),
+    defaultSettings: cookieConsentSettingsSchema.parse({}),
+    defaultItem: {},
     dataFields: [],
   },
 };
