@@ -1,11 +1,11 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import {
-  bannerSettingsSchema,
-  type BannerElement,
-  type SliderSettings,
-  type SliderSlide,
+import type {
+  BannerElement,
+  BannerSettings,
+  SliderSettings,
+  SliderSlide,
 } from "@/lib/widgets/registry";
 import { BannerCanvas } from "./BannerCanvas";
 
@@ -29,17 +29,18 @@ export function SliderStage({
   const idx = Math.min(currentSlide, items.length - 1);
   const slide = items[idx];
 
-  const perSlide = bannerSettingsSchema.parse({
+  // Build directly (no schema.parse) so an in-progress width/height never throws.
+  const perSlide: BannerSettings = {
     widthMode: settings.widthMode,
-    width: settings.width,
-    height: settings.height,
+    width: Math.max(1, settings.width || 1),
+    height: Math.max(1, settings.height || 1),
     rounded: 0,
-    bgColor: slide?.bgColor,
-    bgImage: slide?.bgImage,
-    bgFit: slide?.bgFit,
-    bgTileSize: slide?.bgTileSize,
-    overlayOpacity: slide?.overlayOpacity,
-  });
+    bgColor: slide?.bgColor ?? "#0b3f70",
+    bgImage: slide?.bgImage ?? "",
+    bgFit: slide?.bgFit ?? "cover",
+    bgTileSize: slide?.bgTileSize ?? 0,
+    overlayOpacity: slide?.overlayOpacity ?? 0,
+  };
 
   const setElements = (els: BannerElement[]) =>
     setItems(items.map((s, i) => (i === idx ? { ...s, elements: els } : s)));

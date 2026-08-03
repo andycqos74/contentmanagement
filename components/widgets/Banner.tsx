@@ -15,8 +15,8 @@ export function Banner({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
-  const cw = settings.width;
-  const ch = settings.height;
+  const cw = Math.max(1, settings.width || 1);
+  const ch = Math.max(1, settings.height || 1);
 
   useLayoutEffect(() => {
     const el = ref.current;

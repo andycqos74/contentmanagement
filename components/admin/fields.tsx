@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 const inputCls =
   "w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-[#094582] focus:ring-1 focus:ring-[#094582]";
@@ -75,14 +75,41 @@ export function NumberField({
   max?: number;
   hint?: string;
 }) {
+  // Keep a local string so the user can type/clear freely, but only ever emit a
+  // valid, clamped number — never NaN or an out-of-range value that could break
+  // a live-parsed preview.
+  const [str, setStr] = useState(String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setStr(String(value));
+  }, [value]);
+
+  function handle(raw: string) {
+    setStr(raw);
+    if (raw.trim() === "") return;
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    let c = n;
+    if (min != null) c = Math.max(min, c);
+    if (max != null) c = Math.min(max, c);
+    onChange(c);
+  }
+
   return (
     <Field label={label} hint={hint}>
       <input
         type="number"
-        value={value}
+        value={str}
         min={min}
         max={max}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onFocus={() => {
+          focused.current = true;
+        }}
+        onBlur={() => {
+          focused.current = false;
+          setStr(String(value));
+        }}
+        onChange={(e) => handle(e.target.value)}
         className={inputCls}
       />
     </Field>

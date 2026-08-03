@@ -34,6 +34,7 @@ import { CookieConsentForm } from "./CookieConsentForm";
 import { SliderControls } from "./SliderControls";
 import { SliderStage } from "./SliderStage";
 import { SliderSettingsForm } from "./SliderSettingsForm";
+import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 
 type Initial = {
   id: string;
@@ -385,6 +386,7 @@ export function Editor({
               </span>
             )}
           </div>
+          <ErrorBoundary resetKey={settings}>
           {isBanner ? (
             <BannerCanvas
               settings={settings as unknown as BannerSettings}
@@ -416,6 +418,7 @@ export function Editor({
               )}
             </div>
           )}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

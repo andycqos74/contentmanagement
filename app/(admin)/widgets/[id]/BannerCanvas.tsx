@@ -124,8 +124,8 @@ export function BannerCanvas({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.4);
-  const cw = settings.width;
-  const ch = settings.height;
+  const cw = Math.max(1, settings.width || 1);
+  const ch = Math.max(1, settings.height || 1);
   const drag = useRef<DragState | null>(null);
   const dragCtl = useRef<AbortController | null>(null);
 
