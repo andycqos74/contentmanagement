@@ -78,6 +78,7 @@ const bannerElementBase = {
   y: z.number().default(0),
   w: z.number().default(200),
   h: z.number().default(80),
+  hidden: z.boolean().default(false),
 };
 
 export const bannerTextSchema = z.object({
@@ -120,6 +121,37 @@ export const bannerElementSchema = z.discriminatedUnion("type", [
 export type BannerElement = z.infer<typeof bannerElementSchema>;
 export type BannerElementType = BannerElement["type"];
 
+/* --------------------------- Element presets -------------------------- */
+// A preset saves the *styling* of a banner/slider element — size, colours,
+// weight, alignment, radius — so a look can be reused across widgets for a
+// consistent design. It deliberately excludes id, position (x/y), the hidden
+// flag, and content (text/url/imageUrl).
+
+export const PRESET_STYLE_KEYS: Record<BannerElementType, readonly string[]> = {
+  text: ["w", "h", "color", "fontSize", "fontWeight", "align", "bgColor", "bgOpacity", "rounded"],
+  image: ["w", "h", "fit", "rounded"],
+  button: ["w", "h", "bg", "color", "fontSize", "rounded"],
+};
+
+// Extract the preset-able style fields from an element.
+export function presetStyleFromElement(el: BannerElement): Record<string, unknown> {
+  const src = el as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of PRESET_STYLE_KEYS[el.type]) if (src[k] !== undefined) out[k] = src[k];
+  return out;
+}
+
+// Merge a preset's stored style onto an element (only whitelisted keys for its
+// type — never id/x/y/hidden/content).
+export function applyPresetStyle(
+  el: BannerElement,
+  data: Record<string, unknown>,
+): BannerElement {
+  const patch: Record<string, unknown> = {};
+  for (const k of PRESET_STYLE_KEYS[el.type]) if (data[k] !== undefined) patch[k] = data[k];
+  return { ...el, ...patch } as BannerElement;
+}
+
 export const bannerSettingsSchema = z.object({
   widthMode: z.enum(["full", "fixed"]).default("full"),
   width: z.number().int().min(320).max(2000).default(1200), // design width (= max width when fixed)
@@ -148,6 +180,7 @@ export const sliderSlideSchema = z.object({
   bgPosX: z.number().min(0).max(100).default(50),
   bgPosY: z.number().min(0).max(100).default(50),
   overlayOpacity: z.number().min(0).max(1).default(0),
+  hidden: z.boolean().default(false),
   elements: z.array(bannerElementSchema).default([]),
 });
 export type SliderSlide = z.infer<typeof sliderSlideSchema>;

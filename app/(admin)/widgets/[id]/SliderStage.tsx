@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { nanoid } from "nanoid";
+import { Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import type {
   BannerElement,
   BannerSettings,
@@ -61,6 +62,7 @@ export function SliderStage({
       bgPosX: 50,
       bgPosY: 50,
       overlayOpacity: 0,
+      hidden: false,
       elements: [],
     };
     setItems([...items, next]);
@@ -71,18 +73,32 @@ export function SliderStage({
     setItems(items.filter((_, i) => i !== idx));
     switchSlide(Math.max(0, idx - 1));
   };
+  const duplicateSlide = () => {
+    if (!slide) return;
+    const copy: SliderSlide = {
+      ...slide,
+      elements: slide.elements.map((el) => ({ ...el, id: nanoid(6) })),
+    };
+    setItems([...items.slice(0, idx + 1), copy, ...items.slice(idx + 1)]);
+    switchSlide(idx + 1);
+  };
+  const toggleHidden = () => {
+    if (!slide) return;
+    setItems(items.map((s, i) => (i === idx ? { ...s, hidden: !s.hidden } : s)));
+  };
 
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {items.map((_, i) => (
+        {items.map((s, i) => (
           <button
             key={i}
             type="button"
             onClick={() => switchSlide(i)}
+            title={s.hidden ? `Slide ${i + 1} (hidden)` : `Slide ${i + 1}`}
             className={`h-7 w-7 rounded text-xs font-medium ${
               i === idx ? "bg-[#094582] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
+            } ${s.hidden ? "line-through opacity-60" : ""}`}
           >
             {i + 1}
           </button>
@@ -94,16 +110,34 @@ export function SliderStage({
         >
           <Plus size={13} /> Slide
         </button>
-        {items.length > 1 && (
+        <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
-            onClick={removeSlide}
-            title="Delete this slide"
-            className="ml-auto rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            onClick={toggleHidden}
+            title={slide?.hidden ? "Show slide" : "Hide slide"}
+            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
-            <Trash2 size={15} />
+            {slide?.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
-        )}
+          <button
+            type="button"
+            onClick={duplicateSlide}
+            title="Duplicate slide"
+            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <Copy size={15} />
+          </button>
+          {items.length > 1 && (
+            <button
+              type="button"
+              onClick={removeSlide}
+              title="Delete this slide"
+              className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
       </div>
       {slide && (
         <BannerCanvas

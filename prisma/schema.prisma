@@ -82,3 +82,17 @@ model DataSource {
   createdAt   DateTime @default(now())
   widgets     Widget[]
 }
+
+// A reusable element style preset (size, colours, font weight, radius, …),
+// shared across every widget so designs stay consistent. `data` holds the
+// whitelisted style fields for `type` (see PRESET_STYLE_KEYS in the registry).
+model ElementPreset {
+  id        String   @id @default(cuid())
+  name      String
+  type      String // banner element type: text | image | button
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+}

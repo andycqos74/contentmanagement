@@ -18,6 +18,27 @@ type PublishedSnapshot = {
   items?: Record<string, unknown>[];
 };
 
+// Drop author-hidden content so it is never shipped to live embeds — not just
+// visually skipped, but absent from the payload entirely. Banner elements and
+// slider slides (and hidden elements within visible slides) are removed.
+function stripHidden(
+  type: WidgetTypeKey,
+  items: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  if (type === "BANNER") return items.filter((it) => !it.hidden);
+  if (type === "SLIDER") {
+    return items
+      .filter((it) => !it.hidden)
+      .map((slide) => {
+        const els = slide.elements;
+        return Array.isArray(els)
+          ? { ...slide, elements: els.filter((el) => !(el as Record<string, unknown>)?.hidden) }
+          : slide;
+      });
+  }
+  return items;
+}
+
 // Payload from the PUBLISHED snapshot — this is what live embeds render.
 export async function getPublishedWidget(id: string): Promise<ServedWidget | null> {
   const widget = await prisma.widget.findUnique({ where: { id } });
@@ -33,7 +54,7 @@ export async function getPublishedWidget(id: string): Promise<ServedWidget | nul
     dataSourceId: pub.dataSourceId,
     dataBinding: pub.dataBinding ?? null,
   });
-  return { id: widget.id, type, settings, items };
+  return { id: widget.id, type, settings, items: stripHidden(type, items) };
 }
 
 // Payload from the DRAFT/working state — used only by auth-gated preview.
@@ -53,5 +74,5 @@ export async function getDraftWidget(id: string): Promise<ServedWidget | null> {
     dataSourceId: widget.dataSourceId,
     dataBinding: (widget.dataBinding as DataBinding | null) ?? null,
   });
-  return { id: widget.id, type, settings, items };
+  return { id: widget.id, type, settings, items: stripHidden(type, items) };
 }

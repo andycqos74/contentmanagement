@@ -44,21 +44,24 @@ export function SlideStage({
             style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${slide.overlayOpacity})` }}
           />
         )}
-        {slide.elements.map((el, i) => (
-          <div
-            key={el.id || i}
-            style={{ position: "absolute", left: el.x, top: el.y, width: el.w, height: el.h }}
-          >
-            <BannerElementView el={el} />
-          </div>
-        ))}
+        {slide.elements
+          .filter((el) => !el.hidden)
+          .map((el, i) => (
+            <div
+              key={el.id || i}
+              style={{ position: "absolute", left: el.x, top: el.y, width: el.w, height: el.h }}
+            >
+              <BannerElementView el={el} />
+            </div>
+          ))}
       </div>
     </div>
   );
 }
 
 export function Slider({ settings, items }: { settings: SliderSettings; items: SliderSlide[] }) {
-  const count = items.length;
+  const slides = items.filter((s) => !s.hidden);
+  const count = slides.length;
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
@@ -121,7 +124,7 @@ export function Slider({ settings, items }: { settings: SliderSettings; items: S
         startX.current = null;
       }}
     >
-      {items.map((slide, i) => (
+      {slides.map((slide, i) => (
         <div
           key={i}
           aria-hidden={i !== current}
@@ -169,7 +172,7 @@ export function Slider({ settings, items }: { settings: SliderSettings; items: S
 
       {settings.showDots && count > 1 && (
         <div className="absolute bottom-3 left-0 right-0 z-10 flex justify-center gap-2">
-          {items.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               type="button"

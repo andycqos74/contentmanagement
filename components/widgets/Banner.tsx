@@ -71,14 +71,16 @@ export function Banner({
             }}
           />
         )}
-        {items.map((el, i) => (
-          <div
-            key={el.id || i}
-            style={{ position: "absolute", left: el.x, top: el.y, width: el.w, height: el.h }}
-          >
-            <BannerElementView el={el} />
-          </div>
-        ))}
+        {items
+          .filter((el) => !el.hidden)
+          .map((el, i) => (
+            <div
+              key={el.id || i}
+              style={{ position: "absolute", left: el.x, top: el.y, width: el.w, height: el.h }}
+            >
+              <BannerElementView el={el} />
+            </div>
+          ))}
       </div>
     </div>
   );

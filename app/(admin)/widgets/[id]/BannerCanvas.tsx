@@ -329,7 +329,12 @@ export function BannerCanvas({
                   width: el.w,
                   height: el.h,
                   cursor: "move",
-                  outline: selected ? `${2 / scale}px solid #094582` : "none",
+                  opacity: el.hidden ? 0.35 : 1,
+                  outline: selected
+                    ? `${2 / scale}px solid #094582`
+                    : el.hidden
+                      ? `${2 / scale}px dashed #94a3b8`
+                      : "none",
                 }}
               >
                 <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
