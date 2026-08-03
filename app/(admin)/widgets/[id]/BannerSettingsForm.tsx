@@ -56,8 +56,18 @@ export function BannerSettingsForm({
         options={[
           { value: "cover", label: "Cover" },
           { value: "contain", label: "Contain" },
+          { value: "tile", label: "Tile / repeat" },
         ]}
       />
+      {settings.bgFit === "tile" && (
+        <NumberField
+          label="Tile size (px, 0 = natural)"
+          min={0}
+          max={1000}
+          value={settings.bgTileSize}
+          onChange={(v) => set({ bgTileSize: v })}
+        />
+      )}
       <div className="col-span-2">
         <ImageField
           label="Background image"

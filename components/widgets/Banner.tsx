@@ -39,7 +39,7 @@ export function Banner({
       ref={ref}
       style={{
         ...outer,
-        height: ch * s,
+        aspectRatio: `${cw} / ${ch}`,
         position: "relative",
         overflow: "hidden",
         borderRadius: settings.rounded,

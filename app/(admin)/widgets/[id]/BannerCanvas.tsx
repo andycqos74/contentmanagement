@@ -27,36 +27,57 @@ type DragState = {
   oy: number;
   ow: number;
   oh: number;
+  aspect: number;
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
+// Elements may extend beyond the canvas (bleed off the edges); keep at least MIN
+// on-canvas when moving so they stay grabbable.
 function moveGeo(d: DragState, dx: number, dy: number, cw: number, ch: number) {
-  return { x: clamp(d.ox + dx, 0, cw - d.ow), y: clamp(d.oy + dy, 0, ch - d.oh) };
+  return {
+    x: clamp(d.ox + dx, -(d.ow - MIN), cw - MIN),
+    y: clamp(d.oy + dy, -(d.oh - MIN), ch - MIN),
+  };
 }
 
-function resizeGeo(d: DragState, dx: number, dy: number, cw: number, ch: number) {
+function resizeGeo(d: DragState, dx: number, dy: number, cw: number, ch: number, lock: boolean) {
   const dir = d.mode as Dir;
+  const corner = dir.length === 2;
+  const MAX = Math.max(cw, ch) * 4;
   let x = d.ox;
   let y = d.oy;
   let w = d.ow;
   let h = d.oh;
-  if (dir.includes("e")) w = Math.max(MIN, d.ow + dx);
-  if (dir.includes("s")) h = Math.max(MIN, d.oh + dy);
+
+  if (lock && corner) {
+    // Preserve aspect ratio (Shift on a corner handle).
+    const aspect = d.aspect || 1;
+    let nw = clamp(dir.includes("e") ? d.ow + dx : d.ow - dx, MIN, MAX);
+    let nh = nw / aspect;
+    if (nh < MIN) {
+      nh = MIN;
+      nw = nh * aspect;
+    }
+    w = nw;
+    h = nh;
+    if (dir.includes("w")) x = d.ox + (d.ow - nw);
+    if (dir.includes("n")) y = d.oy + (d.oh - nh);
+    return { x, y, w, h };
+  }
+
+  if (dir.includes("e")) w = clamp(d.ow + dx, MIN, MAX);
+  if (dir.includes("s")) h = clamp(d.oh + dy, MIN, MAX);
   if (dir.includes("w")) {
-    const nw = Math.max(MIN, d.ow - dx);
+    const nw = clamp(d.ow - dx, MIN, MAX);
     x = d.ox + (d.ow - nw);
     w = nw;
   }
   if (dir.includes("n")) {
-    const nh = Math.max(MIN, d.oh - dy);
+    const nh = clamp(d.oh - dy, MIN, MAX);
     y = d.oy + (d.oh - nh);
     h = nh;
   }
-  x = clamp(x, 0, cw);
-  y = clamp(y, 0, ch);
-  w = Math.min(w, cw - x);
-  h = Math.min(h, ch - y);
   return { x, y, w, h };
 }
 
@@ -129,7 +150,8 @@ export function BannerCanvas({
     const s = scale || 1;
     const dx = (e.clientX - d.startX) / s;
     const dy = (e.clientY - d.startY) / s;
-    const geo = d.mode === "move" ? moveGeo(d, dx, dy, cw, ch) : resizeGeo(d, dx, dy, cw, ch);
+    const geo =
+      d.mode === "move" ? moveGeo(d, dx, dy, cw, ch) : resizeGeo(d, dx, dy, cw, ch, e.shiftKey);
     setItems(items.map((it) => (it.id === d.id ? ({ ...it, ...geo } as BannerElement) : it)));
   }
   function endDrag() {
@@ -152,6 +174,7 @@ export function BannerCanvas({
       oy: el.y,
       ow: el.w,
       oh: el.h,
+      aspect: el.h > 0 ? el.w / el.h : 1,
     };
     dragCtl.current?.abort();
     const ctl = new AbortController();
@@ -169,7 +192,7 @@ export function BannerCanvas({
         onPointerDown={() => setSelectedId(null)}
         style={{
           width: "100%",
-          height: ch * scale,
+          aspectRatio: `${cw} / ${ch}`,
           position: "relative",
           overflow: "hidden",
           background: "#f1f5f9",

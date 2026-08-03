@@ -2,17 +2,19 @@
 
 import { useEffect } from "react";
 
-// Reports the rendered height to the parent window so the embed loader can
-// size its iframe to fit (no inner scrollbars).
+// Reports the rendered content height to the parent window so the embed loader
+// can size its iframe to fit. Uses body.scrollHeight (the actual content), not
+// documentElement.scrollHeight, which is floored at the iframe viewport height
+// and therefore can never let the iframe shrink.
 export function AutoResize({ id }: { id: string }) {
   useEffect(() => {
     const post = () => {
-      const height = document.documentElement.scrollHeight;
+      const height = document.body.scrollHeight;
       window.parent?.postMessage({ type: "cms-widget-height", id, height }, "*");
     };
     post();
     const ro = new ResizeObserver(post);
-    ro.observe(document.documentElement);
+    ro.observe(document.body);
     window.addEventListener("load", post);
     // Catch late-loading images that change height after mount.
     const t = setInterval(post, 500);

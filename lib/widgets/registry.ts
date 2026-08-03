@@ -81,7 +81,8 @@ export const bannerTextSchema = z.object({
   fontSize: z.number().default(32),
   fontWeight: z.enum(["400", "600", "700", "800"]).default("700"),
   align: z.enum(["left", "center", "right"]).default("center"),
-  bg: z.string().default("transparent"),
+  bgColor: z.string().default("#000000"),
+  bgOpacity: z.number().min(0).max(1).default(0),
 });
 
 export const bannerImageSchema = z.object({
@@ -117,7 +118,8 @@ export const bannerSettingsSchema = z.object({
   height: z.number().int().min(80).max(1200).default(360),
   bgColor: z.string().default("#0b3f70"),
   bgImage: z.string().default(""),
-  bgFit: z.enum(["cover", "contain"]).default("cover"),
+  bgFit: z.enum(["cover", "contain", "tile"]).default("cover"),
+  bgTileSize: z.number().int().min(0).max(1000).default(0),
   overlayOpacity: z.number().min(0).max(1).default(0),
   rounded: z.number().int().min(0).max(64).default(0),
 });

@@ -3,17 +3,37 @@
 import type { CSSProperties } from "react";
 import type { BannerElement, BannerSettings } from "@/lib/widgets/registry";
 
+function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.replace("#", "");
+  if (h.length === 3)
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  const n = Number.parseInt(h, 16);
+  if (Number.isNaN(n) || h.length !== 6) return `rgba(0,0,0,${alpha})`;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
 export function bannerBackgroundStyle(s: BannerSettings): CSSProperties {
-  if (s.bgImage) {
+  if (!s.bgImage) return { backgroundColor: s.bgColor };
+  const base: CSSProperties = {
+    backgroundColor: s.bgColor,
+    backgroundImage: `url(${s.bgImage})`,
+    backgroundPosition: "center",
+  };
+  if (s.bgFit === "tile") {
     return {
-      backgroundColor: s.bgColor,
-      backgroundImage: `url(${s.bgImage})`,
-      backgroundSize: s.bgFit === "contain" ? "contain" : "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
+      ...base,
+      backgroundRepeat: "repeat",
+      backgroundSize: s.bgTileSize > 0 ? `${s.bgTileSize}px` : "auto",
     };
   }
-  return { backgroundColor: s.bgColor };
+  return {
+    ...base,
+    backgroundRepeat: "no-repeat",
+    backgroundSize: s.bgFit === "contain" ? "contain" : "cover",
+  };
 }
 
 // Renders one banner element, filling its absolutely-positioned box.
@@ -32,7 +52,7 @@ export function BannerElementView({ el }: { el: BannerElement }) {
           fontSize: el.fontSize,
           fontWeight: Number(el.fontWeight),
           textAlign: el.align,
-          background: el.bg,
+          background: el.bgOpacity > 0 ? hexToRgba(el.bgColor, el.bgOpacity) : "transparent",
           padding: 4,
           boxSizing: "border-box",
           overflow: "hidden",

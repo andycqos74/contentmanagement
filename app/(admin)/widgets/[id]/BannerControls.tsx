@@ -54,7 +54,8 @@ export function BannerControls({
       fontSize: 30,
       fontWeight: "700",
       align: "center",
-      bg: "transparent",
+      bgColor: "#000000",
+      bgOpacity: 0,
     });
   const addImage = () =>
     add({
@@ -192,13 +193,19 @@ export function BannerControls({
                   { value: "right", label: "Right" },
                 ]}
               />
-              <div className="col-span-2">
-                <ColorField
-                  label="Background (or 'transparent')"
-                  value={sel.bg}
-                  onChange={(v) => patch(sel.id, { bg: v })}
-                />
-              </div>
+              <ColorField
+                label="Box background"
+                value={sel.bgColor}
+                onChange={(v) => patch(sel.id, { bgColor: v })}
+              />
+              <RangeField
+                label="Box opacity"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sel.bgOpacity}
+                onChange={(v) => patch(sel.id, { bgOpacity: v })}
+              />
             </div>
           )}
 
