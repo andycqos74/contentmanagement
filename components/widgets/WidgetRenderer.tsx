@@ -8,13 +8,17 @@ import {
   heroSlideSchema,
   newsItemSchema,
   newsSettingsSchema,
+  sliderSettingsSchema,
+  sliderSlideSchema,
   type BannerElement,
+  type SliderSlide,
   type WidgetTypeKey,
 } from "@/lib/widgets/registry";
 import { Banner } from "./Banner";
 import { CookieConsent } from "./CookieConsent";
 import { HeroSlider } from "./HeroSlider";
 import { LatestNews } from "./LatestNews";
+import { Slider } from "./Slider";
 
 // Renders any widget from loosely-typed settings/items, coercing both through
 // the registry schemas so partial/in-progress editor state renders safely.
@@ -45,6 +49,13 @@ export function WidgetRenderer({
 
   if (type === "COOKIE_CONSENT") {
     return <CookieConsent settings={cookieConsentSettingsSchema.parse(settings ?? {})} />;
+  }
+
+  if (type === "SLIDER") {
+    const slides = (items ?? [])
+      .map((x) => sliderSlideSchema.safeParse(x))
+      .flatMap((r) => (r.success ? [r.data as SliderSlide] : []));
+    return <Slider settings={sliderSettingsSchema.parse(settings ?? {})} items={slides} />;
   }
 
   return (

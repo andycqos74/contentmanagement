@@ -12,6 +12,8 @@ import {
   type BannerSettings,
   type CookieConsentSettings,
   type DataBinding,
+  type SliderSettings,
+  type SliderSlide,
   type HeroSettings,
   type HeroSlide,
   type NewsItem,
@@ -29,6 +31,9 @@ import { BannerControls } from "./BannerControls";
 import { BannerCanvas } from "./BannerCanvas";
 import { BannerSettingsForm } from "./BannerSettingsForm";
 import { CookieConsentForm } from "./CookieConsentForm";
+import { SliderControls } from "./SliderControls";
+import { SliderStage } from "./SliderStage";
+import { SliderSettingsForm } from "./SliderSettingsForm";
 
 type Initial = {
   id: string;
@@ -56,6 +61,7 @@ export function Editor({
   const def = getWidgetDef(initial.type);
   const isBanner = initial.type === "BANNER";
   const isCookie = initial.type === "COOKIE_CONSENT";
+  const isSlider = initial.type === "SLIDER";
 
   const [name, setName] = useState(initial.name);
   const [settings, setSettings] = useState<Record<string, unknown>>(() =>
@@ -79,6 +85,7 @@ export function Editor({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -237,6 +244,14 @@ export function Editor({
                   selectedId={selectedElId}
                   setSelectedId={setSelectedElId}
                 />
+              ) : isSlider ? (
+                <SliderControls
+                  items={items as SliderSlide[]}
+                  setItems={(v) => setItems(v as Record<string, unknown>[])}
+                  currentSlide={currentSlide}
+                  selectedElId={selectedElId}
+                  setSelectedElId={setSelectedElId}
+                />
               ) : isCookie ? (
                 <CookieConsentForm
                   settings={settings as unknown as CookieConsentSettings}
@@ -310,6 +325,11 @@ export function Editor({
                   set={setSettingsPatch}
                   section="design"
                 />
+              ) : initial.type === "SLIDER" ? (
+                <SliderSettingsForm
+                  settings={settings as unknown as SliderSettings}
+                  set={setSettingsPatch}
+                />
               ) : (
                 <NewsSettingsForm
                   settings={settings as unknown as NewsSettings}
@@ -358,7 +378,7 @@ export function Editor({
         {/* Live preview / banner canvas */}
         <div className="lg:sticky lg:top-6 lg:self-start">
           <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-            <span>{isBanner ? "Banner canvas — drag & resize" : "Live preview"}</span>
+            <span>{isBanner || isSlider ? "Canvas — drag & resize" : "Live preview"}</span>
             {contentSource === "DATA" && previewLoading && (
               <span className="inline-flex items-center gap-1">
                 <Loader2 size={12} className="animate-spin" /> updating
@@ -372,6 +392,16 @@ export function Editor({
               setItems={(v) => setItems(v as Record<string, unknown>[])}
               selectedId={selectedElId}
               setSelectedId={setSelectedElId}
+            />
+          ) : isSlider ? (
+            <SliderStage
+              settings={settings as unknown as SliderSettings}
+              items={items as SliderSlide[]}
+              setItems={(v) => setItems(v as Record<string, unknown>[])}
+              currentSlide={currentSlide}
+              setCurrentSlide={setCurrentSlide}
+              selectedElId={selectedElId}
+              setSelectedElId={setSelectedElId}
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">

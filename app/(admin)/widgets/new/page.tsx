@@ -3,7 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Cookie, Images, Newspaper, RectangleHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  Cookie,
+  GalleryHorizontalEnd,
+  Images,
+  Newspaper,
+  RectangleHorizontal,
+} from "lucide-react";
 import { WIDGET_LIST, type WidgetTypeKey } from "@/lib/widgets/registry";
 
 const ICONS: Record<WidgetTypeKey, React.ComponentType<{ size?: number }>> = {
@@ -11,6 +18,7 @@ const ICONS: Record<WidgetTypeKey, React.ComponentType<{ size?: number }>> = {
   LATEST_NEWS: Newspaper,
   BANNER: RectangleHorizontal,
   COOKIE_CONSENT: Cookie,
+  SLIDER: GalleryHorizontalEnd,
 };
 
 export default function NewWidgetPage() {

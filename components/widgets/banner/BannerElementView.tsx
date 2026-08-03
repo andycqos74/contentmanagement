@@ -1,7 +1,15 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { BannerElement, BannerSettings } from "@/lib/widgets/registry";
+import type { BannerElement } from "@/lib/widgets/registry";
+
+// Background fields shared by banner settings and slider slides.
+type BackgroundLike = {
+  bgColor: string;
+  bgImage: string;
+  bgFit: "cover" | "contain" | "tile";
+  bgTileSize: number;
+};
 
 function hexToRgba(hex: string, alpha: number): string {
   let h = hex.replace("#", "");
@@ -15,7 +23,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
-export function bannerBackgroundStyle(s: BannerSettings): CSSProperties {
+export function bannerBackgroundStyle(s: BackgroundLike): CSSProperties {
   if (!s.bgImage) return { backgroundColor: s.bgColor };
   const base: CSSProperties = {
     backgroundColor: s.bgColor,

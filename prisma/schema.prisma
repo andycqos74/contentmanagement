@@ -13,6 +13,7 @@ enum WidgetType {
   LATEST_NEWS
   BANNER
   COOKIE_CONSENT
+  SLIDER
 }
 
 enum WidgetStatus {

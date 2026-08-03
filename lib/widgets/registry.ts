@@ -4,7 +4,12 @@
 // Pure zod/types only — safe in both client and server bundles.
 import { z } from "zod";
 
-export type WidgetTypeKey = "HERO_SLIDER" | "LATEST_NEWS" | "BANNER" | "COOKIE_CONSENT";
+export type WidgetTypeKey =
+  | "HERO_SLIDER"
+  | "LATEST_NEWS"
+  | "BANNER"
+  | "COOKIE_CONSENT"
+  | "SLIDER";
 
 /* ----------------------------- Hero Slider ----------------------------- */
 
@@ -124,6 +129,33 @@ export const bannerSettingsSchema = z.object({
   rounded: z.number().int().min(0).max(64).default(0),
 });
 export type BannerSettings = z.infer<typeof bannerSettingsSchema>;
+
+/* ------------------------------- Slider ------------------------------- */
+// A slideshow where each slide is a banner-style canvas (background + freely
+// placed elements). Each slide is one WidgetItem.
+
+export const sliderSlideSchema = z.object({
+  bgColor: z.string().default("#0b3f70"),
+  bgImage: z.string().default(""),
+  bgFit: z.enum(["cover", "contain", "tile"]).default("cover"),
+  bgTileSize: z.number().int().min(0).max(1000).default(0),
+  overlayOpacity: z.number().min(0).max(1).default(0),
+  elements: z.array(bannerElementSchema).default([]),
+});
+export type SliderSlide = z.infer<typeof sliderSlideSchema>;
+
+export const sliderSettingsSchema = z.object({
+  widthMode: z.enum(["full", "fixed"]).default("full"),
+  width: z.number().int().min(320).max(2000).default(1200),
+  height: z.number().int().min(80).max(1200).default(420),
+  rounded: z.number().int().min(0).max(64).default(0),
+  autoplay: z.boolean().default(true),
+  intervalMs: z.number().int().min(1000).max(20000).default(5000),
+  transition: z.enum(["slide", "fade"]).default("slide"),
+  showArrows: z.boolean().default(true),
+  showDots: z.boolean().default(true),
+});
+export type SliderSettings = z.infer<typeof sliderSettingsSchema>;
 
 /* --------------------------- Cookie consent --------------------------- */
 
@@ -285,6 +317,31 @@ export const WIDGETS: Record<WidgetTypeKey, WidgetDef> = {
     itemSchema: z.record(z.string(), z.unknown()),
     defaultSettings: cookieConsentSettingsSchema.parse({}),
     defaultItem: {},
+    dataFields: [],
+  },
+  SLIDER: {
+    key: "SLIDER",
+    label: "Slider",
+    description: "A slideshow of free-placement canvases (background, images, text, buttons).",
+    settingsSchema: sliderSettingsSchema,
+    itemSchema: sliderSlideSchema,
+    defaultSettings: sliderSettingsSchema.parse({}),
+    defaultItem: sliderSlideSchema.parse({
+      elements: [
+        bannerTextSchema.parse({
+          id: "t1",
+          type: "text",
+          x: 64,
+          y: 160,
+          w: 560,
+          h: 100,
+          text: "Slide one",
+          fontSize: 46,
+          fontWeight: "800",
+          align: "left",
+        }),
+      ],
+    }),
     dataFields: [],
   },
 };
