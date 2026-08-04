@@ -38,14 +38,52 @@
     for (var i = 0; i < els.length; i++) mount(els[i]);
   }
 
-  window.addEventListener("message", function (e) {
-    var d = e.data;
-    if (!d || d.type !== "cms-widget-height") return;
+  function iframeForSource(source) {
     var els = document.querySelectorAll("[data-cms-widget]");
     for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (el._cmsIframe && el._cmsIframe.contentWindow === e.source) {
-        el._cmsIframe.style.height = Math.ceil(d.height) + "px";
+      if (els[i]._cmsIframe && els[i]._cmsIframe.contentWindow === source) {
+        return els[i]._cmsIframe;
+      }
+    }
+    return null;
+  }
+
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d) return;
+    var f = iframeForSource(e.source);
+    if (!f) return;
+
+    if (d.type === "cms-widget-height") {
+      if (f._cmsOverlay) return; // don't resize while a full-screen overlay is open
+      f.style.height = Math.ceil(d.height) + "px";
+      return;
+    }
+
+    // Lightbox / overlay: expand the iframe to the full viewport so the overlay
+    // covers the host page, then restore its normal flow height on close.
+    if (d.type === "cms-widget-overlay") {
+      if (d.active && !f._cmsOverlay) {
+        f._cmsOverlay = true;
+        f._cmsPrevHeight = f.style.height;
+        f.style.position = "fixed";
+        f.style.top = "0";
+        f.style.left = "0";
+        f.style.right = "0";
+        f.style.bottom = "0";
+        f.style.width = "100%";
+        f.style.height = "100%";
+        f.style.zIndex = "2147483647";
+      } else if (!d.active && f._cmsOverlay) {
+        f._cmsOverlay = false;
+        f.style.position = "";
+        f.style.top = "";
+        f.style.left = "";
+        f.style.right = "";
+        f.style.bottom = "";
+        f.style.zIndex = "";
+        f.style.width = "100%";
+        f.style.height = f._cmsPrevHeight || "300px";
       }
     }
   });

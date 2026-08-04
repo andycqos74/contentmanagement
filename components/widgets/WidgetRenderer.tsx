@@ -4,6 +4,8 @@ import {
   bannerElementSchema,
   bannerSettingsSchema,
   cookieConsentSettingsSchema,
+  gallerySettingsSchema,
+  galleryItemSchema,
   heroSettingsSchema,
   heroSlideSchema,
   newsItemSchema,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/widgets/registry";
 import { Banner } from "./Banner";
 import { CookieConsent } from "./CookieConsent";
+import { Gallery } from "./Gallery";
 import { HeroSlider } from "./HeroSlider";
 import { LatestNews } from "./LatestNews";
 import { Slider } from "./Slider";
@@ -56,6 +59,15 @@ export function WidgetRenderer({
       .map((x) => sliderSlideSchema.safeParse(x))
       .flatMap((r) => (r.success ? [r.data as SliderSlide] : []));
     return <Slider settings={sliderSettingsSchema.parse(settings ?? {})} items={slides} />;
+  }
+
+  if (type === "GALLERY") {
+    return (
+      <Gallery
+        settings={gallerySettingsSchema.parse(settings ?? {})}
+        items={(items ?? []).map((x) => galleryItemSchema.parse(x ?? {}))}
+      />
+    );
   }
 
   return (

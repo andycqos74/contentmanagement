@@ -9,7 +9,8 @@ export type WidgetTypeKey =
   | "LATEST_NEWS"
   | "BANNER"
   | "COOKIE_CONSENT"
-  | "SLIDER";
+  | "SLIDER"
+  | "GALLERY";
 
 /* ----------------------------- Hero Slider ----------------------------- */
 
@@ -272,6 +273,34 @@ export const cookieConsentSettingsSchema = z.object({
 });
 export type CookieConsentSettings = z.infer<typeof cookieConsentSettingsSchema>;
 
+/* ------------------------------ Gallery ------------------------------- */
+// A responsive photo gallery. Content is either a manual list of images or a
+// live listing of a CDN storage folder (images added to the folder appear
+// automatically). The folder path / sort / limit live in settings; manual
+// images are stored as WidgetItems.
+
+export const galleryItemSchema = z.object({
+  imageUrl: z.string().default(""),
+  caption: z.string().default(""),
+  link: z.string().default(""),
+});
+export type GalleryItem = z.infer<typeof galleryItemSchema>;
+
+export const gallerySettingsSchema = z.object({
+  source: z.enum(["manual", "folder"]).default("manual"),
+  folder: z.string().default(""), // storage folder path (webdav rel path or combined folder id)
+  sort: z.enum(["name-asc", "name-desc", "newest", "oldest"]).default("name-asc"),
+  limit: z.number().int().min(0).max(300).default(0), // 0 = show all
+  layout: z.enum(["grid", "masonry"]).default("grid"),
+  columns: z.number().int().min(1).max(6).default(3),
+  gap: z.number().int().min(0).max(40).default(8),
+  rounded: z.number().int().min(0).max(48).default(8),
+  aspect: z.enum(["auto", "square", "4/3", "3/4", "16/9"]).default("square"),
+  lightbox: z.boolean().default(true),
+  showCaptions: z.boolean().default(false),
+});
+export type GallerySettings = z.infer<typeof gallerySettingsSchema>;
+
 /* --------------------------- Data binding ----------------------------- */
 
 export const FILTER_OPS = ["=", "!=", ">", ">=", "<", "<=", "LIKE"] as const;
@@ -399,6 +428,17 @@ export const WIDGETS: Record<WidgetTypeKey, WidgetDef> = {
         }),
       ],
     }),
+    dataFields: [],
+  },
+  GALLERY: {
+    key: "GALLERY",
+    label: "Photo Gallery",
+    description:
+      "A responsive image gallery. Add photos, or link a CDN folder that auto-updates as images are added.",
+    settingsSchema: gallerySettingsSchema,
+    itemSchema: galleryItemSchema,
+    defaultSettings: gallerySettingsSchema.parse({}),
+    defaultItem: galleryItemSchema.parse({}),
     dataFields: [],
   },
 };

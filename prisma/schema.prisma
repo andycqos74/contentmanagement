@@ -14,6 +14,7 @@ enum WidgetType {
   BANNER
   COOKIE_CONSENT
   SLIDER
+  GALLERY
 }
 
 enum WidgetStatus {

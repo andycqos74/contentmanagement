@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Cookie,
   GalleryHorizontalEnd,
+  GalleryThumbnails,
   Images,
   Newspaper,
   RectangleHorizontal,
@@ -19,6 +20,7 @@ const ICONS: Record<WidgetTypeKey, React.ComponentType<{ size?: number }>> = {
   BANNER: RectangleHorizontal,
   COOKIE_CONSENT: Cookie,
   SLIDER: GalleryHorizontalEnd,
+  GALLERY: GalleryThumbnails,
 };
 
 export default function NewWidgetPage() {

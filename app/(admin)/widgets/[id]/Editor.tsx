@@ -22,6 +22,8 @@ import {
   type BannerSettings,
   type CookieConsentSettings,
   type DataBinding,
+  type GalleryItem,
+  type GallerySettings,
   type SliderSettings,
   type SliderSlide,
   type HeroSettings,
@@ -44,6 +46,7 @@ import { CookieConsentForm } from "./CookieConsentForm";
 import { SliderControls } from "./SliderControls";
 import { SliderStage } from "./SliderStage";
 import { SliderSettingsForm } from "./SliderSettingsForm";
+import { GalleryContentForm, GallerySettingsForm } from "./GalleryForm";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 
 type Initial = {
@@ -73,6 +76,7 @@ export function Editor({
   const isBanner = initial.type === "BANNER";
   const isCookie = initial.type === "COOKIE_CONSENT";
   const isSlider = initial.type === "SLIDER";
+  const isGallery = initial.type === "GALLERY";
 
   const [name, setName] = useState(initial.name);
   const [settings, setSettings] = useState<Record<string, unknown>>(() =>
@@ -98,6 +102,7 @@ export function Editor({
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [galleryFolderItems, setGalleryFolderItems] = useState<Record<string, unknown>[]>([]);
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -126,7 +131,36 @@ export function Editor({
     return () => clearTimeout(t);
   }, [contentSource, dataSourceId, binding, initial.id]);
 
-  const previewData = contentSource === "MANUAL" ? items : previewItems;
+  // Live folder preview for a folder-linked gallery (images auto-listed from the CDN).
+  useEffect(() => {
+    if (!isGallery || settings.source !== "folder") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear preview when not in folder mode
+      setGalleryFolderItems([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const q = new URLSearchParams({
+          path: String(settings.folder ?? ""),
+          sort: String(settings.sort ?? "name-asc"),
+          limit: String(settings.limit ?? 0),
+        });
+        const res = await fetch(`/api/admin/storage/gallery?${q}`);
+        const d = await res.json();
+        setGalleryFolderItems(res.ok ? (d.items ?? []) : []);
+      } catch {
+        setGalleryFolderItems([]);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isGallery, settings.source, settings.folder, settings.sort, settings.limit]);
+
+  const galleryFolderMode = isGallery && settings.source === "folder";
+  const previewData = galleryFolderMode
+    ? galleryFolderItems
+    : contentSource === "MANUAL"
+      ? items
+      : previewItems;
 
   const save = useCallback(async (): Promise<boolean> => {
     setSaving(true);
@@ -270,6 +304,13 @@ export function Editor({
                   set={setSettingsPatch}
                   section="content"
                 />
+              ) : isGallery ? (
+                <GalleryContentForm
+                  settings={settings as unknown as GallerySettings}
+                  set={setSettingsPatch}
+                  items={items as unknown as GalleryItem[]}
+                  setItems={(v) => setItems(v as unknown as Record<string, unknown>[])}
+                />
               ) : (
                 <div className="space-y-4">
                   <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
@@ -340,6 +381,11 @@ export function Editor({
               ) : initial.type === "SLIDER" ? (
                 <SliderSettingsForm
                   settings={settings as unknown as SliderSettings}
+                  set={setSettingsPatch}
+                />
+              ) : initial.type === "GALLERY" ? (
+                <GallerySettingsForm
+                  settings={settings as unknown as GallerySettings}
                   set={setSettingsPatch}
                 />
               ) : (

@@ -23,13 +23,15 @@ function isImage(e: Entry) {
 export function StorageBrowser({
   open,
   filter = "all",
+  pick = "file",
   onClose,
   onSelect,
 }: {
   open: boolean;
   filter?: "image" | "all";
+  pick?: "file" | "folder";
   onClose: () => void;
-  onSelect: (url: string) => void;
+  onSelect: (value: string) => void; // file: public URL; folder: folder path
 }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +58,8 @@ export function StorageBrowser({
 
   if (!open) return null;
 
-  const entries = (listing?.entries ?? []).filter(
-    (e) => e.isDir || filter === "all" || isImage(e),
+  const entries = (listing?.entries ?? []).filter((e) =>
+    pick === "folder" ? e.isDir : e.isDir || filter === "all" || isImage(e),
   );
 
   return (
@@ -80,17 +82,31 @@ export function StorageBrowser({
             >
               <ChevronLeft size={18} />
             </button>
-            <h2 className="font-semibold text-slate-900">Storage</h2>
+            <h2 className="font-semibold text-slate-900">
+              {pick === "folder" ? "Choose a folder" : "Storage"}
+            </h2>
             <span className="truncate text-xs text-slate-400">/{listing?.path ?? ""}</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {pick === "folder" && (
+              <button
+                type="button"
+                onClick={() => onSelect(listing?.path ?? "")}
+                disabled={!listing}
+                className="rounded-md bg-[#094582] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0b3f70] disabled:opacity-50"
+              >
+                Use this folder
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="min-h-[240px] flex-1 overflow-y-auto p-4">

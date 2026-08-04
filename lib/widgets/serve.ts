@@ -1,8 +1,20 @@
 // Builds the payload served to embeds/preview from a widget row.
 import { prisma } from "@/lib/db";
-import { rewritePublicUrls } from "@/lib/storage";
+import { listFolderImages, rewritePublicUrls, type GallerySort } from "@/lib/storage";
 import { resolveContent } from "./resolve-content";
 import { getWidgetDef, type DataBinding, type WidgetTypeKey } from "./registry";
+
+// A folder-linked gallery lists its CDN folder live, so newly-added images show
+// up automatically. Returns items shaped like manual gallery items.
+async function galleryFolderItems(
+  settings: Record<string, unknown>,
+): Promise<Record<string, unknown>[]> {
+  const folder = typeof settings.folder === "string" ? settings.folder : "";
+  const sort = (typeof settings.sort === "string" ? settings.sort : "name-asc") as GallerySort;
+  const limit = typeof settings.limit === "number" ? settings.limit : 0;
+  const images = await listFolderImages(folder, sort, limit);
+  return images.map((i) => ({ imageUrl: i.imageUrl, caption: i.caption, link: "" }));
+}
 
 export type ServedWidget = {
   id: string;
@@ -48,13 +60,16 @@ export async function getPublishedWidget(id: string): Promise<ServedWidget | nul
   const type = widget.type as WidgetTypeKey;
   const def = getWidgetDef(type);
   const settings = def.settingsSchema.parse(pub.settings ?? {}) as Record<string, unknown>;
-  const items = await resolveContent({
-    type,
-    contentSource: pub.contentSource ?? "MANUAL",
-    manualItems: pub.items,
-    dataSourceId: pub.dataSourceId,
-    dataBinding: pub.dataBinding ?? null,
-  });
+  const items =
+    type === "GALLERY" && settings.source === "folder"
+      ? await galleryFolderItems(settings)
+      : await resolveContent({
+          type,
+          contentSource: pub.contentSource ?? "MANUAL",
+          manualItems: pub.items,
+          dataSourceId: pub.dataSourceId,
+          dataBinding: pub.dataBinding ?? null,
+        });
   return {
     id: widget.id,
     type,
@@ -73,13 +88,16 @@ export async function getDraftWidget(id: string): Promise<ServedWidget | null> {
   const type = widget.type as WidgetTypeKey;
   const def = getWidgetDef(type);
   const settings = def.settingsSchema.parse(widget.settings ?? {}) as Record<string, unknown>;
-  const items = await resolveContent({
-    type,
-    contentSource: widget.contentSource,
-    manualItems: widget.items.map((i) => i.data as Record<string, unknown>),
-    dataSourceId: widget.dataSourceId,
-    dataBinding: (widget.dataBinding as DataBinding | null) ?? null,
-  });
+  const items =
+    type === "GALLERY" && settings.source === "folder"
+      ? await galleryFolderItems(settings)
+      : await resolveContent({
+          type,
+          contentSource: widget.contentSource,
+          manualItems: widget.items.map((i) => i.data as Record<string, unknown>),
+          dataSourceId: widget.dataSourceId,
+          dataBinding: (widget.dataBinding as DataBinding | null) ?? null,
+        });
   return {
     id: widget.id,
     type,

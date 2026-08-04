@@ -206,6 +206,7 @@ export type StorageEntry = {
   url: string | null; // public URL (files only)
   size?: number;
   mime?: string;
+  modified?: number; // last-modified epoch ms (webdav only)
 };
 
 export type StorageListing = {
@@ -253,7 +254,7 @@ async function listWebdav(cfg: StorageConfig, path: string): Promise<StorageList
   const res = await fetch(url, {
     method: "PROPFIND",
     headers: { Authorization: auth, Depth: "1", "Content-Type": "application/xml" },
-    body: `<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><displayname/><resourcetype/><getcontentlength/><getcontenttype/></prop></propfind>`,
+    body: `<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><displayname/><resourcetype/><getcontentlength/><getcontenttype/><getlastmodified/></prop></propfind>`,
   });
   if (res.status !== 207) {
     const detail = await res.text().catch(() => "");
@@ -299,6 +300,7 @@ function parsePropfind(body: string, cfg: StorageConfig, rel: string): StorageEn
       relPath;
     const size = prop.getcontentlength != null ? Number(prop.getcontentlength) : undefined;
     const mime = typeof prop.getcontenttype === "string" ? prop.getcontenttype : undefined;
+    const lm = typeof prop.getlastmodified === "string" ? Date.parse(prop.getlastmodified) : NaN;
 
     entries.push({
       name,
@@ -309,6 +311,7 @@ function parsePropfind(body: string, cfg: StorageConfig, rel: string): StorageEn
         : `${cfg.publicBase}/${relPath.split("/").map(encodeURIComponent).join("/")}`,
       size: Number.isFinite(size) ? size : undefined,
       mime,
+      modified: Number.isFinite(lm) ? lm : undefined,
     });
   }
   return sortEntries(entries);
@@ -347,4 +350,71 @@ async function listCombined(cfg: StorageConfig, path: string): Promise<StorageLi
     mime: c.mimeType,
   }));
   return { path: folderId, parentPath: data.folder?.parentId ?? null, entries: sortEntries(entries) };
+}
+
+/* --------------------------- Gallery folders -------------------------- */
+
+export type GallerySort = "name-asc" | "name-desc" | "newest" | "oldest";
+export type GalleryImage = { imageUrl: string; caption: string };
+
+const GALLERY_IMAGE_RE = /\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i;
+function isImageEntry(e: StorageEntry): boolean {
+  return (e.mime?.startsWith("image/") ?? false) || GALLERY_IMAGE_RE.test(e.name);
+}
+// A tidy caption from a filename: drop the extension, turn separators into spaces.
+function prettyCaption(name: string): string {
+  return name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+}
+
+// Short-lived cache of folder listings so public embed traffic doesn't hammer
+// the CDN. Keyed by folder+sort; the full list is cached and sliced per limit.
+const galleryCache = new Map<string, { at: number; items: GalleryImage[] }>();
+const GALLERY_TTL_MS = 60_000;
+
+// Pure transform: keep image files, sort them, and shape them into gallery items.
+export function galleryImagesFromEntries(
+  entries: StorageEntry[],
+  sort: GallerySort,
+  limit: number,
+): GalleryImage[] {
+  const images = entries.filter((e) => !e.isDir && !!e.url && isImageEntry(e));
+  images.sort((a, b) => {
+    if (sort === "newest" || sort === "oldest") {
+      const am = a.modified ?? 0;
+      const bm = b.modified ?? 0;
+      if (am !== bm) return sort === "newest" ? bm - am : am - bm;
+    }
+    const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+    return sort === "name-desc" ? -cmp : cmp;
+  });
+  const items = images.map((e) => ({ imageUrl: e.url as string, caption: prettyCaption(e.name) }));
+  return limit > 0 ? items.slice(0, limit) : items;
+}
+
+// Live listing of the images in a storage folder, sorted and capped. Used by the
+// gallery widget so images added to the folder appear automatically.
+export async function listFolderImages(
+  path: string,
+  sort: GallerySort,
+  limit: number,
+): Promise<GalleryImage[]> {
+  const key = `${path}::${sort}`;
+  const now = Date.now();
+  const cached = galleryCache.get(key);
+  if (cached && now - cached.at < GALLERY_TTL_MS) {
+    return limit > 0 ? cached.items.slice(0, limit) : cached.items;
+  }
+
+  let entries: StorageEntry[];
+  try {
+    entries = (await listStorage(path)).entries;
+  } catch {
+    // On a storage error, serve the last good listing rather than an empty gallery.
+    if (cached) return limit > 0 ? cached.items.slice(0, limit) : cached.items;
+    return [];
+  }
+
+  const all = galleryImagesFromEntries(entries, sort, 0);
+  galleryCache.set(key, { at: now, items: all });
+  return limit > 0 ? all.slice(0, limit) : all;
 }
