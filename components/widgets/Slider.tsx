@@ -124,30 +124,30 @@ export function Slider({ settings, items }: { settings: SliderSettings; items: S
         startX.current = null;
       }}
     >
-      {slides.map((slide, i) => (
-        <div
-          key={i}
-          aria-hidden={i !== current}
-          style={
-            settings.transition === "fade"
-              ? {
-                  position: "absolute",
-                  inset: 0,
-                  opacity: i === current ? 1 : 0,
-                  transition: "opacity 600ms ease",
-                  zIndex: i === current ? 1 : 0,
-                }
-              : {
-                  position: "absolute",
-                  inset: 0,
-                  transform: `translateX(${(i - current) * 100}%)`,
-                  transition: "transform 500ms ease",
-                }
-          }
-        >
-          <SlideStage cw={cw} ch={ch} scale={s} slide={slide} />
-        </div>
-      ))}
+      {slides.map((slide, i) => {
+        const dur = settings.transitionMs;
+        const fadeLike = settings.transition === "fade" || settings.transition === "none";
+        const style: CSSProperties = fadeLike
+          ? {
+              position: "absolute",
+              inset: 0,
+              opacity: i === current ? 1 : 0,
+              transition:
+                settings.transition === "none" || dur <= 0 ? "none" : `opacity ${dur}ms ease`,
+              zIndex: i === current ? 1 : 0,
+            }
+          : {
+              position: "absolute",
+              inset: 0,
+              transform: `translateX(${(i - current) * 100}%)`,
+              transition: dur <= 0 ? "none" : `transform ${dur}ms ease`,
+            };
+        return (
+          <div key={i} aria-hidden={i !== current} style={style}>
+            <SlideStage cw={cw} ch={ch} scale={s} slide={slide} />
+          </div>
+        );
+      })}
 
       {settings.showArrows && count > 1 && (
         <>

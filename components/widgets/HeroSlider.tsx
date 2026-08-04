@@ -1,9 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { HeroSettings, HeroSlide } from "@/lib/widgets/registry";
 import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
+
+// Per-slide transition style: fade / slide / none, at the configured speed.
+function slideTransition(
+  transition: string,
+  dur: number,
+  i: number,
+  current: number,
+): CSSProperties {
+  if (transition === "fade" || transition === "none") {
+    return {
+      opacity: i === current ? 1 : 0,
+      transition: transition === "none" || dur <= 0 ? "none" : `opacity ${dur}ms ease`,
+      zIndex: i === current ? 1 : 0,
+    };
+  }
+  return {
+    transform: `translateX(${(i - current) * 100}%)`,
+    transition: dur <= 0 ? "none" : `transform ${dur}ms ease`,
+  };
+}
 
 export function HeroSlider({
   settings,
@@ -78,18 +98,7 @@ export function HeroSlider({
           key={i}
           className="absolute inset-0"
           aria-hidden={i !== current}
-          style={
-            settings.transition === "fade"
-              ? {
-                  opacity: i === current ? 1 : 0,
-                  transition: "opacity 700ms ease",
-                  zIndex: i === current ? 1 : 0,
-                }
-              : {
-                  transform: `translateX(${(i - current) * 100}%)`,
-                  transition: "transform 600ms ease",
-                }
-          }
+          style={slideTransition(settings.transition, settings.transitionMs, i, current)}
         >
           {s.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

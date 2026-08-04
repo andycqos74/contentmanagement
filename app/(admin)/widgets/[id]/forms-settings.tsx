@@ -38,8 +38,21 @@ export function HeroSettingsForm({
         label="Transition"
         value={settings.transition}
         onChange={(v) => set({ transition: v })}
-        options={[{ value: "slide", label: "Slide" }, { value: "fade", label: "Fade" }]}
+        options={[
+          { value: "slide", label: "Slide" },
+          { value: "fade", label: "Fade" },
+          { value: "none", label: "None (instant)" },
+        ]}
       />
+      {settings.transition !== "none" && (
+        <NumberField
+          label="Transition speed (ms)"
+          min={0}
+          max={3000}
+          value={settings.transitionMs}
+          onChange={(v) => set({ transitionMs: v })}
+        />
+      )}
       <SelectField
         label="Text position"
         value={settings.textPosition}

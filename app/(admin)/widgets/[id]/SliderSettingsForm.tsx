@@ -40,14 +40,26 @@ export function SliderSettingsForm({
         options={[
           { value: "slide", label: "Slide" },
           { value: "fade", label: "Fade" },
+          { value: "none", label: "None (instant)" },
         ]}
       />
+      {settings.transition !== "none" && (
+        <NumberField
+          label="Transition speed (ms)"
+          min={0}
+          max={3000}
+          value={settings.transitionMs}
+          onChange={(v) => set({ transitionMs: v })}
+          hint="How long the fade/slide animation takes. Higher = slower."
+        />
+      )}
       <NumberField
         label="Autoplay interval (ms)"
         min={1000}
         max={20000}
         value={settings.intervalMs}
         onChange={(v) => set({ intervalMs: v })}
+        hint="Time each slide is shown before auto-advancing."
       />
       <div className="col-span-2 grid grid-cols-3 gap-x-4 rounded-md border border-slate-200 p-2">
         <ToggleField label="Autoplay" value={settings.autoplay} onChange={(v) => set({ autoplay: v })} />
