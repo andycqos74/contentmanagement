@@ -16,11 +16,12 @@ type Mode = "webdav" | "combined";
 
 type StorageConfig = {
   base: string; // upload endpoint base (no trailing slash)
-  publicBase: string; // base the files are publicly served from
+  publicBase: string; // base the files are publicly served from (non-proxy mode)
   username: string;
   password: string;
   parent: string; // "root" or a sub-path/folder
   mode: Mode;
+  proxy: boolean; // serve files through the CMS (/api/media) instead of a direct URL
 };
 
 // Combined Storage session cookie cache (unused in webdav mode).
@@ -52,6 +53,14 @@ function readConfig(): StorageConfig | null {
   const publicBase = (
     process.env.STORAGE_PUBLIC_URL || (mode === "webdav" ? stripDavSegment(base) : base)
   ).replace(/\/+$/, "");
+
+  // Proxy mode: the CMS reads files from storage (with its credentials) and serves
+  // them from /api/media, so images always load with no CDN login. On by default
+  // for WebDAV (whose /dav mount needs auth); Combined Storage already has public
+  // /f/<token> URLs so it stays direct. Force with STORAGE_PROXY=true|false.
+  const proxyEnv = process.env.STORAGE_PROXY?.toLowerCase();
+  const proxy = proxyEnv === "true" ? true : proxyEnv === "false" ? false : mode === "webdav";
+
   return {
     base,
     publicBase,
@@ -59,6 +68,7 @@ function readConfig(): StorageConfig | null {
     password,
     parent: process.env.STORAGE_UPLOAD_PARENT || "root",
     mode,
+    proxy,
   };
 }
 
@@ -66,13 +76,59 @@ export function isStorageConfigured(): boolean {
   return readConfig() !== null;
 }
 
+// Absolute CMS base for building /api/media URLs (empty → relative URLs, which
+// still resolve correctly inside the embed iframe and the admin).
+function mediaBase(): string {
+  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "");
+}
+
+// The public (proxy) URL for a storage file at `relPath` (a decoded relative path).
+function proxyUrl(relPath: string): string {
+  const enc = relPath.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  return `${mediaBase()}/api/media/${enc}`;
+}
+
+// The public URL for a storage file given its decoded relative path.
+export function publicFileUrl(relPath: string): string {
+  const cfg = readConfig();
+  if (cfg?.proxy) return proxyUrl(relPath);
+  const base = cfg?.publicBase ?? "";
+  return `${base}/${relPath.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")}`;
+}
+
 // A rewriter that maps a URL under the authenticated storage base to the public
 // (friendly) base, or null when there is nothing to rewrite (no config, or the
 // two bases are identical).
 function publicRewriter(): ((url: string) => string) | null {
   const cfg = readConfig();
-  if (!cfg || cfg.base === cfg.publicBase) return null;
-  const { base, publicBase } = cfg;
+  if (!cfg) return null;
+  const { base, publicBase, proxy } = cfg;
+  const dec = (s: string) => {
+    try {
+      return decodeURIComponent(s);
+    } catch {
+      return s;
+    }
+  };
+
+  if (proxy) {
+    // Any URL under the /dav base OR its non-/dav (legacy friendly) form becomes a
+    // CMS /api/media URL, so previously-stored links start loading too.
+    const stripped = stripDavSegment(base);
+    const prefixes = base === stripped ? [base] : [base, stripped];
+    return (url: string) => {
+      if (typeof url !== "string") return url;
+      for (const pre of prefixes) {
+        if (url === pre) return proxyUrl("");
+        if (url.startsWith(pre + "/")) {
+          return proxyUrl(url.slice(pre.length + 1).split("/").map(dec).join("/"));
+        }
+      }
+      return url;
+    };
+  }
+
+  if (base === publicBase) return null;
   return (url: string) => {
     if (typeof url !== "string") return url;
     if (url === base) return publicBase;
@@ -156,7 +212,7 @@ async function uploadWebdav(
       `WebDAV upload failed (${res.status})${detail ? `: ${detail.slice(0, 180)}` : ""}`,
     );
   }
-  return { url: `${cfg.publicBase}/${path}` };
+  return { url: publicFileUrl(path) };
 }
 
 async function combinedLogin(cfg: StorageConfig): Promise<string> {
@@ -306,9 +362,7 @@ function parsePropfind(body: string, cfg: StorageConfig, rel: string): StorageEn
       name,
       isDir,
       path: relPath,
-      url: isDir
-        ? null
-        : `${cfg.publicBase}/${relPath.split("/").map(encodeURIComponent).join("/")}`,
+      url: isDir ? null : publicFileUrl(relPath),
       size: Number.isFinite(size) ? size : undefined,
       mime,
       modified: Number.isFinite(lm) ? lm : undefined,
@@ -417,4 +471,19 @@ export async function listFolderImages(
   const all = galleryImagesFromEntries(entries, sort, 0);
   galleryCache.set(key, { at: now, items: all });
   return limit > 0 ? all.slice(0, limit) : all;
+}
+
+/* ---------------------------- Media proxy ----------------------------- */
+
+// Fetch a storage file (with the CMS's credentials) for /api/media to stream back
+// publicly. WebDAV only — Combined Storage files are already public. Rejects path
+// traversal; returns null when unavailable.
+export async function fetchStorageFile(relPath: string): Promise<Response | null> {
+  const cfg = readConfig();
+  if (!cfg || cfg.mode !== "webdav") return null;
+  const clean = relPath.replace(/^\/+/, "");
+  if (!clean || clean.split("/").some((s) => s === "..")) return null;
+  const auth = "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
+  const enc = clean.split("/").map(encodeURIComponent).join("/");
+  return fetch(`${cfg.base}/${enc}`, { headers: { Authorization: auth } }).catch(() => null);
 }
