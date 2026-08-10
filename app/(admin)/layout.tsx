@@ -29,6 +29,9 @@ export default async function AdminLayout({
               <Link href="/data-sources" className="rounded px-3 py-1.5 hover:bg-white/10">
                 Data sources
               </Link>
+              <Link href="/users" className="rounded px-3 py-1.5 hover:bg-white/10">
+                Users
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">
