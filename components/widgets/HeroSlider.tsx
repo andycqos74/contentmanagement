@@ -138,6 +138,8 @@ export function HeroSlider({
               {s.buttonText && (
                 <a
                   href={s.buttonUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="mt-6 inline-block rounded-md px-6 py-3 font-semibold text-white shadow"
                   style={{ background: settings.accentColor }}
                 >

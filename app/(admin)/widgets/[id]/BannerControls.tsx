@@ -126,6 +126,7 @@ export function BannerControls({
       h: 50,
       text: "Button",
       url: "",
+      target: "_blank",
       bg: "#094582",
       color: "#ffffff",
       fontSize: 16,
@@ -404,6 +405,17 @@ export function BannerControls({
               </div>
               <div className="col-span-2">
                 <UrlField label="Link URL" value={sel.url} onChange={(v) => patch(sel.id, { url: v })} />
+              </div>
+              <div className="col-span-2">
+                <SelectField
+                  label="Opens in"
+                  value={sel.target ?? "_blank"}
+                  onChange={(v) => patch(sel.id, { target: v })}
+                  options={[
+                    { value: "_blank", label: "New tab" },
+                    { value: "_top", label: "Same window" },
+                  ]}
+                />
               </div>
               <ColorField label="Background" value={sel.bg} onChange={(v) => patch(sel.id, { bg: v })} />
               <ColorField label="Text colour" value={sel.color} onChange={(v) => patch(sel.id, { color: v })} />

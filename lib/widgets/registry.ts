@@ -119,6 +119,9 @@ export const bannerButtonSchema = z.object({
   type: z.literal("button"),
   text: z.string().default("Button"),
   url: z.string().default(""),
+  // Where the link opens: "_blank" = new tab, "_top" = same window (full page).
+  // Never the default (which would navigate inside the embed iframe).
+  target: z.enum(["_blank", "_top"]).default("_blank"),
   bg: z.string().default("#094582"),
   color: z.string().default("#ffffff"),
   fontSize: z.number().default(16),

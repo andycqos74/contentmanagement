@@ -122,9 +122,12 @@ export function BannerElementView({ el }: { el: BannerElement }) {
   }
 
   // button
+  const target = el.target ?? "_blank";
   return (
     <a
       href={el.url || "#"}
+      target={target}
+      rel={target === "_blank" ? "noopener noreferrer" : undefined}
       style={{
         width: "100%",
         height: "100%",
