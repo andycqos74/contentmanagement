@@ -22,6 +22,7 @@ import {
   type BannerSettings,
   type CookieConsentSettings,
   type DataBinding,
+  type GalleryBrowserSettings,
   type GalleryItem,
   type GallerySettings,
   type SliderSettings,
@@ -47,6 +48,7 @@ import { SliderControls } from "./SliderControls";
 import { SliderStage } from "./SliderStage";
 import { SliderSettingsForm } from "./SliderSettingsForm";
 import { GalleryContentForm, GallerySettingsForm } from "./GalleryForm";
+import { GalleryBrowserContentForm, GalleryBrowserSettingsForm } from "./GalleryBrowserForm";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 
 type Initial = {
@@ -77,6 +79,7 @@ export function Editor({
   const isCookie = initial.type === "COOKIE_CONSENT";
   const isSlider = initial.type === "SLIDER";
   const isGallery = initial.type === "GALLERY";
+  const isGalleryBrowser = initial.type === "GALLERY_BROWSER";
 
   const [name, setName] = useState(initial.name);
   const [settings, setSettings] = useState<Record<string, unknown>>(() =>
@@ -103,6 +106,7 @@ export function Editor({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [galleryFolderItems, setGalleryFolderItems] = useState<Record<string, unknown>[]>([]);
+  const [galleryBrowserAlbums, setGalleryBrowserAlbums] = useState<Record<string, unknown>[]>([]);
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -155,12 +159,47 @@ export function Editor({
     return () => clearTimeout(t);
   }, [isGallery, settings.source, settings.folder, settings.sort, settings.limit]);
 
+  // Live album preview for a gallery browser — resolves the folder's sub-folders
+  // (with inline images) exactly as the published embed will, so unsaved
+  // display/title/sort changes preview immediately.
+  useEffect(() => {
+    if (!isGalleryBrowser || !settings.folder) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear preview when no folder is chosen
+      setGalleryBrowserAlbums([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/storage/gallery-browser`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ settings }),
+        });
+        const d = await res.json();
+        setGalleryBrowserAlbums(res.ok ? (d.albums ?? []) : []);
+      } catch {
+        setGalleryBrowserAlbums([]);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-resolve only when a content-affecting field changes
+  }, [
+    isGalleryBrowser,
+    settings.folder,
+    settings.overrides,
+    settings.albumSort,
+    settings.imageSort,
+    settings.imageLimit,
+  ]);
+
   const galleryFolderMode = isGallery && settings.source === "folder";
-  const previewData = galleryFolderMode
-    ? galleryFolderItems
-    : contentSource === "MANUAL"
-      ? items
-      : previewItems;
+  const previewData = isGalleryBrowser
+    ? galleryBrowserAlbums
+    : galleryFolderMode
+      ? galleryFolderItems
+      : contentSource === "MANUAL"
+        ? items
+        : previewItems;
 
   const save = useCallback(async (): Promise<boolean> => {
     setSaving(true);
@@ -311,6 +350,11 @@ export function Editor({
                   items={items as unknown as GalleryItem[]}
                   setItems={(v) => setItems(v as unknown as Record<string, unknown>[])}
                 />
+              ) : isGalleryBrowser ? (
+                <GalleryBrowserContentForm
+                  settings={settings as unknown as GalleryBrowserSettings}
+                  set={setSettingsPatch}
+                />
               ) : (
                 <div className="space-y-4">
                   <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
@@ -386,6 +430,11 @@ export function Editor({
               ) : initial.type === "GALLERY" ? (
                 <GallerySettingsForm
                   settings={settings as unknown as GallerySettings}
+                  set={setSettingsPatch}
+                />
+              ) : initial.type === "GALLERY_BROWSER" ? (
+                <GalleryBrowserSettingsForm
+                  settings={settings as unknown as GalleryBrowserSettings}
                   set={setSettingsPatch}
                 />
               ) : (

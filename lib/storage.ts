@@ -473,6 +473,34 @@ export async function listFolderImages(
   return limit > 0 ? all.slice(0, limit) : all;
 }
 
+export type StorageFolder = { name: string; path: string; modified?: number };
+
+// Short-lived cache of a folder's sub-folders, so the gallery browser doesn't
+// re-list the parent on every embed request.
+const subfolderCache = new Map<string, { at: number; dirs: StorageFolder[] }>();
+
+// Live listing of the sub-folders of a storage folder. Used by the gallery
+// browser widget so newly-added album folders appear automatically.
+export async function listSubfolders(path: string): Promise<StorageFolder[]> {
+  const now = Date.now();
+  const cached = subfolderCache.get(path);
+  if (cached && now - cached.at < GALLERY_TTL_MS) return cached.dirs;
+
+  let entries: StorageEntry[];
+  try {
+    entries = (await listStorage(path)).entries;
+  } catch {
+    if (cached) return cached.dirs; // serve the last good listing on a storage error
+    return [];
+  }
+
+  const dirs = entries
+    .filter((e) => e.isDir)
+    .map((e) => ({ name: e.name, path: e.path, modified: e.modified }));
+  subfolderCache.set(path, { at: now, dirs });
+  return dirs;
+}
+
 /* ---------------------------- Media proxy ----------------------------- */
 
 // Fetch a storage file (with the CMS's credentials) for /api/media to stream back

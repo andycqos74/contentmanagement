@@ -4,6 +4,8 @@ import {
   bannerElementSchema,
   bannerSettingsSchema,
   cookieConsentSettingsSchema,
+  galleryAlbumSchema,
+  galleryBrowserSettingsSchema,
   gallerySettingsSchema,
   galleryItemSchema,
   heroSettingsSchema,
@@ -19,6 +21,7 @@ import {
 import { Banner } from "./Banner";
 import { CookieConsent } from "./CookieConsent";
 import { Gallery } from "./Gallery";
+import { GalleryBrowser } from "./GalleryBrowser";
 import { HeroSlider } from "./HeroSlider";
 import { LatestNews } from "./LatestNews";
 import { Slider } from "./Slider";
@@ -66,6 +69,15 @@ export function WidgetRenderer({
       <Gallery
         settings={gallerySettingsSchema.parse(settings ?? {})}
         items={(items ?? []).map((x) => galleryItemSchema.parse(x ?? {}))}
+      />
+    );
+  }
+
+  if (type === "GALLERY_BROWSER") {
+    return (
+      <GalleryBrowser
+        settings={galleryBrowserSettingsSchema.parse(settings ?? {})}
+        items={(items ?? []).map((x) => galleryAlbumSchema.parse(x ?? {}))}
       />
     );
   }

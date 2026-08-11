@@ -10,7 +10,8 @@ export type WidgetTypeKey =
   | "BANNER"
   | "COOKIE_CONSENT"
   | "SLIDER"
-  | "GALLERY";
+  | "GALLERY"
+  | "GALLERY_BROWSER";
 
 /* ----------------------------- Hero Slider ----------------------------- */
 
@@ -304,6 +305,56 @@ export const gallerySettingsSchema = z.object({
 });
 export type GallerySettings = z.infer<typeof gallerySettingsSchema>;
 
+/* -------------------------- Gallery Browser --------------------------- */
+// An album index over a CDN folder. It lists the sub-folders of a chosen parent
+// folder as "albums"; each album can be shown or hidden and given a title
+// (defaulted from the folder name). The widget renders a grid of album cards and,
+// on click, opens that folder's images as a gallery. Albums are discovered live
+// at serve time — new sub-folders appear automatically; per-folder display/title
+// choices are stored in settings keyed by the sub-folder's path.
+
+export const galleryFolderOverrideSchema = z.object({
+  display: z.boolean().default(true),
+  title: z.string().default(""),
+});
+export type GalleryFolderOverride = z.infer<typeof galleryFolderOverrideSchema>;
+
+// One resolved album, as served to the renderer (folder discovered + images listed).
+export const galleryAlbumSchema = z.object({
+  path: z.string().default(""),
+  title: z.string().default(""),
+  cover: z.string().default(""),
+  count: z.number().int().default(0),
+  images: z.array(galleryItemSchema).default([]),
+});
+export type GalleryAlbum = z.infer<typeof galleryAlbumSchema>;
+
+export const galleryBrowserSettingsSchema = z.object({
+  folder: z.string().default(""), // parent folder whose sub-folders become albums
+  overrides: z.record(z.string(), galleryFolderOverrideSchema).default({}), // keyed by sub-folder path
+  albumSort: z.enum(["name-asc", "name-desc", "newest", "oldest"]).default("name-asc"),
+  imageSort: z.enum(["name-asc", "name-desc", "newest", "oldest"]).default("name-asc"),
+  imageLimit: z.number().int().min(0).max(500).default(0), // per-album cap (0 = all)
+  // Album grid (the cover cards)
+  columns: z.number().int().min(1).max(6).default(3),
+  gap: z.number().int().min(0).max(40).default(12),
+  rounded: z.number().int().min(0).max(48).default(10),
+  aspect: z.enum(["auto", "square", "4/3", "3/4", "16/9"]).default("4/3"),
+  showTitles: z.boolean().default(true),
+  showCount: z.boolean().default(true),
+  titleColor: z.string().default("#0f172a"),
+  // Album view (the opened folder's gallery)
+  galleryColumns: z.number().int().min(1).max(6).default(4),
+  galleryGap: z.number().int().min(0).max(40).default(8),
+  galleryAspect: z.enum(["auto", "square", "4/3", "3/4", "16/9"]).default("square"),
+  lightbox: z.boolean().default(true),
+  showCaptions: z.boolean().default(false),
+  backLabel: z.string().default("All albums"),
+  accentColor: z.string().default("#094582"),
+  fontFamily: z.string().default("system"),
+});
+export type GalleryBrowserSettings = z.infer<typeof galleryBrowserSettingsSchema>;
+
 /* --------------------------- Data binding ----------------------------- */
 
 export const FILTER_OPS = ["=", "!=", ">", ">=", "<", "<=", "LIKE"] as const;
@@ -442,6 +493,17 @@ export const WIDGETS: Record<WidgetTypeKey, WidgetDef> = {
     itemSchema: galleryItemSchema,
     defaultSettings: gallerySettingsSchema.parse({}),
     defaultItem: galleryItemSchema.parse({}),
+    dataFields: [],
+  },
+  GALLERY_BROWSER: {
+    key: "GALLERY_BROWSER",
+    label: "Gallery Browser",
+    description:
+      "Turn a CDN folder into an album index — its sub-folders become galleries visitors can browse.",
+    settingsSchema: galleryBrowserSettingsSchema,
+    itemSchema: galleryAlbumSchema,
+    defaultSettings: galleryBrowserSettingsSchema.parse({}),
+    defaultItem: galleryAlbumSchema.parse({}),
     dataFields: [],
   },
 };
