@@ -74,6 +74,7 @@ export function BannerControls({
       id: nanoid(6),
       type: "text",
       hidden: false,
+      groupId: "",
       x: stagger,
       y: stagger,
       w: 320,
@@ -92,6 +93,7 @@ export function BannerControls({
       id: nanoid(6),
       type: "image",
       hidden: false,
+      groupId: "",
       x: stagger,
       y: stagger,
       w: 220,
@@ -106,6 +108,7 @@ export function BannerControls({
       id: nanoid(6),
       type: "shape",
       hidden: false,
+      groupId: "",
       x: stagger,
       y: stagger,
       w: 200,
@@ -120,6 +123,7 @@ export function BannerControls({
       id: nanoid(6),
       type: "button",
       hidden: false,
+      groupId: "",
       x: stagger,
       y: stagger,
       w: 170,
@@ -160,6 +164,18 @@ export function BannerControls({
     const el = items.find((e) => e.id === id);
     if (el) patch(id, { hidden: !el.hidden });
   }
+  function setGroup(id: string, groupId: string) {
+    patch(id, { groupId });
+  }
+  function newGroup(id: string) {
+    patch(id, { groupId: nanoid(5) });
+  }
+  function ungroup(groupId: string) {
+    if (!groupId) return;
+    setItems(
+      items.map((e) => (e.groupId === groupId ? ({ ...e, groupId: "" } as BannerElement) : e)),
+    );
+  }
   function applyPreset(el: BannerElement, preset: Preset) {
     const next = applyPresetStyle(el, preset.data);
     setItems(items.map((e) => (e.id === el.id ? next : e)));
@@ -185,6 +201,9 @@ export function BannerControls({
   }
 
   const typePresets = sel ? presets.filter((p) => p.type === sel.type) : [];
+  // Distinct groups on this slide, in element order, labelled "Group 1", "Group 2"…
+  const groupList = [...new Set(items.map((e) => e.groupId).filter(Boolean))] as string[];
+  const groupCount = sel?.groupId ? items.filter((e) => e.groupId === sel.groupId).length : 0;
 
   return (
     <div className="space-y-4">
@@ -257,6 +276,41 @@ export function BannerControls({
                 <Trash2 size={15} />
               </button>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2">
+            <span className="text-xs font-medium text-slate-500">Group</span>
+            <select
+              value={sel.groupId || ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__new__") newGroup(sel.id);
+                else setGroup(sel.id, v);
+              }}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs outline-none focus:border-[#094582] focus:ring-1 focus:ring-[#094582]"
+            >
+              <option value="">No group</option>
+              {groupList.map((g, i) => (
+                <option key={g} value={g}>
+                  Group {i + 1}
+                </option>
+              ))}
+              <option value="__new__">+ New group</option>
+            </select>
+            {sel.groupId && (
+              <button
+                type="button"
+                onClick={() => ungroup(sel.groupId)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white"
+              >
+                Ungroup
+              </button>
+            )}
+            {groupCount > 1 && (
+              <span className="text-[11px] text-slate-400">
+                moves &amp; resizes with {groupCount - 1} other{groupCount - 1 === 1 ? "" : "s"}
+              </span>
+            )}
           </div>
 
           {sel.type === "text" && (

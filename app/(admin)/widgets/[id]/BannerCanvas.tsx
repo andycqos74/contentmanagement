@@ -20,75 +20,96 @@ type Dir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 const HANDLES: Dir[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 const MIN = 20;
 
+type Rect = { x: number; y: number; w: number; h: number };
+type Member = { id: string; ox: number; oy: number; ow: number; oh: number };
 type DragState = {
-  id: string;
   mode: "move" | Dir;
   startX: number;
   startY: number;
-  ox: number;
-  oy: number;
-  ow: number;
-  oh: number;
+  members: Member[]; // captured origins of every element that moves/resizes together
+  bx: number; // captured bounding box of the members
+  by: number;
+  bw: number;
+  bh: number;
   aspect: number;
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 const snapTo = (v: number, step: number) => (step > 0 ? Math.round(v / step) * step : v);
 
-// Snap an element's geometry to the grid. Dimensions keep at least MIN.
-function snapGeo(g: { x?: number; y?: number; w?: number; h?: number }, step: number) {
-  const out = { ...g };
-  if (out.x != null) out.x = snapTo(out.x, step);
-  if (out.y != null) out.y = snapTo(out.y, step);
-  if (out.w != null) out.w = Math.max(MIN, snapTo(out.w, step));
-  if (out.h != null) out.h = Math.max(MIN, snapTo(out.h, step));
-  return out;
-}
-
-// Elements may extend beyond the canvas (bleed off the edges); keep at least MIN
-// on-canvas when moving so they stay grabbable.
-function moveGeo(d: DragState, dx: number, dy: number, cw: number, ch: number) {
+// Snap a rectangle to the grid. Dimensions keep at least MIN.
+function snapRect(g: Rect, step: number): Rect {
   return {
-    x: clamp(d.ox + dx, -(d.ow - MIN), cw - MIN),
-    y: clamp(d.oy + dy, -(d.oh - MIN), ch - MIN),
+    x: snapTo(g.x, step),
+    y: snapTo(g.y, step),
+    w: Math.max(MIN, snapTo(g.w, step)),
+    h: Math.max(MIN, snapTo(g.h, step)),
   };
 }
 
-function resizeGeo(d: DragState, dx: number, dy: number, cw: number, ch: number, lock: boolean) {
-  const dir = d.mode as Dir;
+// The bounding box of a set of element rectangles.
+function bboxOf(els: Rect[]): Rect {
+  const x = Math.min(...els.map((e) => e.x));
+  const y = Math.min(...els.map((e) => e.y));
+  const w = Math.max(...els.map((e) => e.x + e.w)) - x;
+  const h = Math.max(...els.map((e) => e.y + e.h)) - y;
+  return { x, y, w, h };
+}
+
+// The ids that move together with the current selection: the whole group if the
+// selected element is grouped, otherwise just the selected element.
+function activeGroup(items: BannerElement[], selectedId: string | null): string[] {
+  if (!selectedId) return [];
+  const sel = items.find((i) => i.id === selectedId);
+  if (!sel) return [];
+  if (sel.groupId) return items.filter((i) => i.groupId === sel.groupId).map((i) => i.id);
+  return [selectedId];
+}
+
+// Resize a rectangle by dragging handle `dir`. `lock` (Shift on a corner) keeps
+// the aspect ratio. Elements may bleed off the canvas, so no position clamping.
+function resizeRect(
+  o: Rect,
+  dir: Dir,
+  dx: number,
+  dy: number,
+  cw: number,
+  ch: number,
+  lock: boolean,
+  aspect: number,
+): Rect {
   const corner = dir.length === 2;
   const MAX = Math.max(cw, ch) * 4;
-  let x = d.ox;
-  let y = d.oy;
-  let w = d.ow;
-  let h = d.oh;
+  let x = o.x;
+  let y = o.y;
+  let w = o.w;
+  let h = o.h;
 
   if (lock && corner) {
-    // Preserve aspect ratio (Shift on a corner handle).
-    const aspect = d.aspect || 1;
-    let nw = clamp(dir.includes("e") ? d.ow + dx : d.ow - dx, MIN, MAX);
-    let nh = nw / aspect;
+    const a = aspect || 1;
+    let nw = clamp(dir.includes("e") ? o.w + dx : o.w - dx, MIN, MAX);
+    let nh = nw / a;
     if (nh < MIN) {
       nh = MIN;
-      nw = nh * aspect;
+      nw = nh * a;
     }
     w = nw;
     h = nh;
-    if (dir.includes("w")) x = d.ox + (d.ow - nw);
-    if (dir.includes("n")) y = d.oy + (d.oh - nh);
+    if (dir.includes("w")) x = o.x + (o.w - nw);
+    if (dir.includes("n")) y = o.y + (o.h - nh);
     return { x, y, w, h };
   }
 
-  if (dir.includes("e")) w = clamp(d.ow + dx, MIN, MAX);
-  if (dir.includes("s")) h = clamp(d.oh + dy, MIN, MAX);
+  if (dir.includes("e")) w = clamp(o.w + dx, MIN, MAX);
+  if (dir.includes("s")) h = clamp(o.h + dy, MIN, MAX);
   if (dir.includes("w")) {
-    const nw = clamp(d.ow - dx, MIN, MAX);
-    x = d.ox + (d.ow - nw);
+    const nw = clamp(o.w - dx, MIN, MAX);
+    x = o.x + (o.w - nw);
     w = nw;
   }
   if (dir.includes("n")) {
-    const nh = clamp(d.oh - dy, MIN, MAX);
-    y = d.oy + (d.oh - nh);
+    const nh = clamp(o.h - dy, MIN, MAX);
+    y = o.y + (o.h - nh);
     h = nh;
   }
   return { x, y, w, h };
@@ -164,42 +185,84 @@ export function BannerCanvas({
   // Abort any in-flight drag on unmount.
   useEffect(() => () => dragCtl.current?.abort(), []);
 
-  // Handlers close over the current render's items/scale — which is correct for a
-  // drag, since only the dragged element changes (computed from captured origins).
+  // Handlers close over the current render's items/scale — correct for a drag,
+  // since only the captured members change (computed from their captured origins).
   function onMove(e: PointerEvent) {
     const d = drag.current;
     if (!d) return;
     const s = scale || 1;
     const dx = (e.clientX - d.startX) / s;
     const dy = (e.clientY - d.startY) / s;
-    const lock = d.mode !== "move" && e.shiftKey;
-    let geo: { x?: number; y?: number; w?: number; h?: number } =
-      d.mode === "move" ? moveGeo(d, dx, dy, cw, ch) : resizeGeo(d, dx, dy, cw, ch, e.shiftKey);
-    // Snap to grid unless aspect-locking a corner resize (Shift).
-    if (snap && !lock) geo = snapGeo(geo, grid);
-    setItems(items.map((it) => (it.id === d.id ? ({ ...it, ...geo } as BannerElement) : it)));
+
+    if (d.mode === "move") {
+      // Translate the whole group; clamp the bounding box (not each element) so
+      // relative positions are preserved and the box stays grabbable.
+      let nbx = clamp(d.bx + dx, -(d.bw - MIN), cw - MIN);
+      let nby = clamp(d.by + dy, -(d.bh - MIN), ch - MIN);
+      if (snap) {
+        nbx = snapTo(nbx, grid);
+        nby = snapTo(nby, grid);
+      }
+      const tx = nbx - d.bx;
+      const ty = nby - d.by;
+      setItems(
+        items.map((it) => {
+          const m = d.members.find((mm) => mm.id === it.id);
+          return m ? ({ ...it, x: m.ox + tx, y: m.oy + ty } as BannerElement) : it;
+        }),
+      );
+      return;
+    }
+
+    // Resize: scale every member within the group's bounding box.
+    const dir = d.mode;
+    const lock = dir.length === 2 && e.shiftKey;
+    let box = resizeRect({ x: d.bx, y: d.by, w: d.bw, h: d.bh }, dir, dx, dy, cw, ch, e.shiftKey, d.aspect);
+    if (snap && !lock) box = snapRect(box, grid);
+    const sx = d.bw > 0 ? box.w / d.bw : 1;
+    const sy = d.bh > 0 ? box.h / d.bh : 1;
+    setItems(
+      items.map((it) => {
+        const m = d.members.find((mm) => mm.id === it.id);
+        if (!m) return it;
+        return {
+          ...it,
+          x: box.x + (m.ox - d.bx) * sx,
+          y: box.y + (m.oy - d.by) * sy,
+          w: Math.max(MIN, m.ow * sx),
+          h: Math.max(MIN, m.oh * sy),
+        } as BannerElement;
+      }),
+    );
   }
   function endDrag() {
     drag.current = null;
     dragCtl.current?.abort();
     dragCtl.current = null;
   }
-  function startDrag(e: ReactPointerEvent, id: string, mode: "move" | Dir) {
+  function beginDrag(e: ReactPointerEvent, mode: "move" | Dir, anchorId: string) {
     e.preventDefault();
     e.stopPropagation();
-    const el = items.find((i) => i.id === id);
-    if (!el) return;
-    setSelectedId(id);
+    const anchor = items.find((i) => i.id === anchorId);
+    if (!anchor) return;
+    setSelectedId(anchorId);
+    const ids = anchor.groupId
+      ? items.filter((i) => i.groupId === anchor.groupId).map((i) => i.id)
+      : [anchorId];
+    const members: Member[] = items
+      .filter((i) => ids.includes(i.id))
+      .map((i) => ({ id: i.id, ox: i.x, oy: i.y, ow: i.w, oh: i.h }));
+    const bb = bboxOf(members.map((m) => ({ x: m.ox, y: m.oy, w: m.ow, h: m.oh })));
     drag.current = {
-      id,
       mode,
       startX: e.clientX,
       startY: e.clientY,
-      ox: el.x,
-      oy: el.y,
-      ow: el.w,
-      oh: el.h,
-      aspect: el.h > 0 ? el.w / el.h : 1,
+      members,
+      bx: bb.x,
+      by: bb.y,
+      bw: bb.w,
+      bh: bb.h,
+      aspect: bb.h > 0 ? bb.w / bb.h : 1,
     };
     dragCtl.current?.abort();
     const ctl = new AbortController();
@@ -215,6 +278,12 @@ export function BannerCanvas({
     `inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
       on ? "bg-[#094582]/10 text-[#094582]" : "text-slate-600 hover:bg-slate-100"
     }`;
+
+  // The active selection (single element or a whole group) and its bounding box.
+  const activeIds = activeGroup(items, selectedId);
+  const activeEls = items.filter((e) => activeIds.includes(e.id));
+  const selBox = activeEls.length > 0 ? bboxOf(activeEls) : null;
+  const isGroup = activeEls.length > 1;
 
   return (
     <div ref={measureRef} className="rounded-lg border border-slate-200">
@@ -317,49 +386,67 @@ export function BannerCanvas({
               />
             )}
             {items.map((el) => {
-            const selected = el.id === selectedId;
-            return (
+              const member = isGroup && activeIds.includes(el.id);
+              return (
+                <div
+                  key={el.id}
+                  onPointerDown={(e) => beginDrag(e, "move", el.id)}
+                  style={{
+                    position: "absolute",
+                    left: el.x,
+                    top: el.y,
+                    width: el.w,
+                    height: el.h,
+                    cursor: "move",
+                    opacity: el.hidden ? 0.35 : 1,
+                    outline: el.hidden
+                      ? `${2 / scale}px dashed #94a3b8`
+                      : member
+                        ? `${1.5 / scale}px dashed rgba(9,69,130,0.7)`
+                        : "none",
+                  }}
+                >
+                  <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
+                    <BannerElementView el={el} />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Selection overlay: a bounding box (single element or whole group)
+                with resize handles. The box itself is click-through so the
+                elements beneath stay draggable; only the handles capture. */}
+            {selBox && (
               <div
-                key={el.id}
-                onPointerDown={(e) => startDrag(e, el.id, "move")}
                 style={{
                   position: "absolute",
-                  left: el.x,
-                  top: el.y,
-                  width: el.w,
-                  height: el.h,
-                  cursor: "move",
-                  opacity: el.hidden ? 0.35 : 1,
-                  outline: selected
-                    ? `${2 / scale}px solid #094582`
-                    : el.hidden
-                      ? `${2 / scale}px dashed #94a3b8`
-                      : "none",
+                  left: selBox.x,
+                  top: selBox.y,
+                  width: selBox.w,
+                  height: selBox.h,
+                  pointerEvents: "none",
+                  outline: `${2 / scale}px solid #094582`,
                 }}
               >
-                <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
-                  <BannerElementView el={el} />
-                </div>
-                {selected &&
-                  HANDLES.map((dir) => (
-                    <div
-                      key={dir}
-                      onPointerDown={(e) => startDrag(e, el.id, dir)}
-                      style={{
-                        position: "absolute",
-                        width: hs,
-                        height: hs,
-                        background: "#fff",
-                        border: `${1.5 / scale}px solid #094582`,
-                        borderRadius: hs / 4,
-                        cursor: CURSORS[dir],
-                        ...handlePos(dir, el.w, el.h, hs),
-                      }}
-                    />
-                  ))}
+                {HANDLES.map((dir) => (
+                  <div
+                    key={dir}
+                    onPointerDown={(e) => beginDrag(e, dir, selectedId as string)}
+                    style={{
+                      position: "absolute",
+                      width: hs,
+                      height: hs,
+                      background: "#fff",
+                      border: `${1.5 / scale}px solid #094582`,
+                      borderRadius: hs / 4,
+                      cursor: CURSORS[dir],
+                      pointerEvents: "auto",
+                      ...handlePos(dir, selBox.w, selBox.h, hs),
+                    }}
+                  />
+                ))}
               </div>
-            );
-            })}
+            )}
           </div>
         </div>
       </div>
