@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, File as FileIcon, Folder, Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  File as FileIcon,
+  Folder,
+  FolderPlus,
+  ImageUp,
+  Loader2,
+  X,
+} from "lucide-react";
 
 type Entry = {
   name: string;
@@ -52,6 +60,8 @@ export function StorageBrowser({
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (p: string) => {
     setLoading(true);
@@ -66,6 +76,50 @@ export function StorageBrowser({
     }
     setLoading(false);
   }, []);
+
+  const here = listing?.path ?? "";
+
+  async function newFolder() {
+    const name = window.prompt("New folder name");
+    if (!name || !name.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/storage/folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent: here, name: name.trim() }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error ?? "Could not create folder");
+      else await load(here);
+    } catch {
+      setError("Could not create folder");
+    }
+    setBusy(false);
+  }
+
+  async function uploadFiles(files: FileList) {
+    setBusy(true);
+    setError(null);
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append("file", file);
+        if (here) fd.append("folder", here);
+        const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          setError(d.error ?? "Upload failed");
+          break;
+        }
+      }
+      await load(here);
+    } catch {
+      setError("Upload failed");
+    }
+    setBusy(false);
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load the listing when the browser opens
@@ -104,6 +158,35 @@ export function StorageBrowser({
             <span className="truncate text-xs text-slate-400">/{listing?.path ?? ""}</span>
           </div>
           <div className="flex items-center gap-2">
+            <input
+              ref={uploadRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) uploadFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={newFolder}
+              disabled={busy || !listing}
+              title="Create a folder here"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <FolderPlus size={14} /> Folder
+            </button>
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              disabled={busy || !listing}
+              title="Upload images here"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <ImageUp size={14} />} Upload
+            </button>
             {pick === "folder" && (
               <button
                 type="button"

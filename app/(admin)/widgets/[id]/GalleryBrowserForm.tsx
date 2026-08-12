@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Folder, Images, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Folder, FolderPlus, Images, ImageUp, Loader2, RefreshCw } from "lucide-react";
 import {
   ColorField,
   FontField,
@@ -25,14 +25,19 @@ function pretty(name: string): string {
 export function GalleryBrowserContentForm({
   settings,
   set,
+  onStorageChanged,
 }: {
   settings: GalleryBrowserSettings;
   set: SetS;
+  onStorageChanged?: () => void;
 }) {
   const [browse, setBrowse] = useState(false);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busyPath, setBusyPath] = useState<string | null>(null); // album path being uploaded to, or "__new__"
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const uploadTarget = useRef<string | null>(null);
 
   const overrides = settings.overrides ?? {};
   const setOverride = (path: string, patch: { display?: boolean; title?: string }) => {
@@ -57,6 +62,60 @@ export function GalleryBrowserContentForm({
     }
     setLoading(false);
   }, []);
+
+  async function createAlbum() {
+    const name = window.prompt("New album (folder) name");
+    if (!name || !name.trim()) return;
+    setBusyPath("__new__");
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/storage/folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent: settings.folder, name: name.trim() }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error ?? "Could not create album");
+      else {
+        await load(settings.folder);
+        onStorageChanged?.();
+      }
+    } catch {
+      setError("Could not create album");
+    }
+    setBusyPath(null);
+  }
+
+  function pickUpload(path: string) {
+    uploadTarget.current = path;
+    uploadRef.current?.click();
+  }
+
+  async function doUpload(files: FileList) {
+    const path = uploadTarget.current;
+    if (!path) return;
+    setBusyPath(path);
+    setError(null);
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("folder", path);
+        const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          setError(d.error ?? "Upload failed");
+          break;
+        }
+      }
+      await load(settings.folder);
+      onStorageChanged?.();
+    } catch {
+      setError("Upload failed");
+    }
+    setBusyPath(null);
+    uploadTarget.current = null;
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh the album list when the parent folder changes
@@ -118,18 +177,44 @@ export function GalleryBrowserContentForm({
 
       {settings.folder && (
         <div className="space-y-2">
+          <input
+            ref={uploadRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) doUpload(e.target.files);
+              e.target.value = "";
+            }}
+          />
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">
               Albums{albums.length ? ` (${albums.length})` : ""}
             </span>
-            <button
-              type="button"
-              onClick={() => load(settings.folder)}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            >
-              {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              Refresh
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={createAlbum}
+                disabled={busyPath === "__new__"}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-[#094582] hover:bg-[#094582]/10 disabled:opacity-50"
+              >
+                {busyPath === "__new__" ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <FolderPlus size={13} />
+                )}
+                New album
+              </button>
+              <button
+                type="button"
+                onClick={() => load(settings.folder)}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              >
+                {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                Refresh
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -169,6 +254,20 @@ export function GalleryBrowserContentForm({
                     /{a.path} · {a.count} photo{a.count === 1 ? "" : "s"}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => pickUpload(a.path)}
+                  disabled={busyPath === a.path}
+                  title="Upload photos to this album"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {busyPath === a.path ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <ImageUp size={13} />
+                  )}
+                  Upload
+                </button>
                 <label className="flex shrink-0 cursor-pointer items-center gap-1.5">
                   <span className="text-[11px] font-medium text-slate-500">Show</span>
                   <button

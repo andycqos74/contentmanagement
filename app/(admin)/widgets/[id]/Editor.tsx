@@ -107,6 +107,7 @@ export function Editor({
   const [expanded, setExpanded] = useState(false);
   const [galleryFolderItems, setGalleryFolderItems] = useState<Record<string, unknown>[]>([]);
   const [galleryBrowserAlbums, setGalleryBrowserAlbums] = useState<Record<string, unknown>[]>([]);
+  const [storageTick, setStorageTick] = useState(0); // bumped when the editor creates a folder / uploads
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -190,6 +191,7 @@ export function Editor({
     settings.albumSort,
     settings.imageSort,
     settings.imageLimit,
+    storageTick,
   ]);
 
   const galleryFolderMode = isGallery && settings.source === "folder";
@@ -354,6 +356,7 @@ export function Editor({
                 <GalleryBrowserContentForm
                   settings={settings as unknown as GalleryBrowserSettings}
                   set={setSettingsPatch}
+                  onStorageChanged={() => setStorageTick((t) => t + 1)}
                 />
               ) : (
                 <div className="space-y-4">
