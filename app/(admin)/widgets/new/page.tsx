@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Cookie,
+  FolderOpen,
   GalleryHorizontalEnd,
   GalleryThumbnails,
   Images,
@@ -21,6 +22,7 @@ const ICONS: Record<WidgetTypeKey, React.ComponentType<{ size?: number }>> = {
   COOKIE_CONSENT: Cookie,
   SLIDER: GalleryHorizontalEnd,
   GALLERY: GalleryThumbnails,
+  GALLERY_BROWSER: FolderOpen,
 };
 
 export default function NewWidgetPage() {

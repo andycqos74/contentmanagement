@@ -18,6 +18,22 @@ function isImage(e: Entry) {
   return (e.mime?.startsWith("image/") ?? false) || IMAGE_RE.test(e.name);
 }
 
+// Lazy-loaded thumbnail that degrades to a file icon if the image can't load.
+function Thumb({ url, name }: { url: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <FileIcon className="text-slate-400" size={26} />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 // A modal file browser over the configured storage backend. Folders are
 // navigable; selecting a file returns its public URL.
 export function StorageBrowser({
@@ -143,8 +159,7 @@ export function StorageBrowser({
                   >
                     <div className="grid h-20 w-full place-items-center overflow-hidden rounded bg-slate-100">
                       {isImage(e) && e.url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={e.url} alt={e.name} className="h-full w-full object-cover" />
+                        <Thumb url={e.url} name={e.name} />
                       ) : (
                         <FileIcon className="text-slate-400" size={26} />
                       )}
