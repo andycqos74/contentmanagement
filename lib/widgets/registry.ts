@@ -82,6 +82,8 @@ const bannerElementBase = {
   w: z.number().default(200),
   h: z.number().default(80),
   hidden: z.boolean().default(false),
+  // Elements sharing a non-empty groupId move and resize together on the canvas.
+  groupId: z.string().default(""),
 };
 
 export const bannerTextSchema = z.object({

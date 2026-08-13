@@ -168,12 +168,13 @@ export async function uploadImage(
   bytes: Uint8Array<ArrayBuffer>,
   filename: string,
   mimeType: string,
+  folder?: string, // target folder (defaults to STORAGE_UPLOAD_PARENT)
 ): Promise<UploadResult> {
   const cfg = readConfig();
   if (!cfg) throw new Error("Image storage is not configured");
   return cfg.mode === "webdav"
-    ? uploadWebdav(cfg, bytes, filename, mimeType)
-    : uploadCombined(cfg, bytes, filename, mimeType);
+    ? uploadWebdav(cfg, bytes, filename, mimeType, folder)
+    : uploadCombined(cfg, bytes, filename, mimeType, folder);
 }
 
 // Sub-path prefix ("" for root), normalised without leading/trailing slashes.
@@ -197,10 +198,13 @@ async function uploadWebdav(
   bytes: Uint8Array<ArrayBuffer>,
   filename: string,
   mimeType: string,
+  folder?: string,
 ): Promise<UploadResult> {
-  const path = subPath(cfg.parent) + uniqueName(filename);
+  const dir = folder != null ? subPath(folder) : subPath(cfg.parent);
+  const path = (dir + uniqueName(filename)).replace(/^\/+/, "");
   const auth = "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
-  const res = await fetch(`${cfg.base}/${path}`, {
+  const enc = path.split("/").map(encodeURIComponent).join("/");
+  const res = await fetch(`${cfg.base}/${enc}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": mimeType || "application/octet-stream" },
     body: new Blob([bytes], { type: mimeType || "application/octet-stream" }),
@@ -233,8 +237,10 @@ async function uploadCombined(
   bytes: Uint8Array<ArrayBuffer>,
   filename: string,
   mimeType: string,
+  folder?: string,
 ): Promise<UploadResult> {
-  const url = `${cfg.base}/api/files/${encodeURIComponent(cfg.parent)}/upload?name=${encodeURIComponent(filename)}`;
+  const parent = folder != null && folder !== "" ? folder : cfg.parent;
+  const url = `${cfg.base}/api/files/${encodeURIComponent(parent)}/upload?name=${encodeURIComponent(filename)}`;
   const body = new Blob([bytes], { type: mimeType || "application/octet-stream" });
   const send = (cookie: string) =>
     fetch(url, { method: "POST", headers: { Cookie: cookie }, body });
@@ -499,6 +505,46 @@ export async function listSubfolders(path: string): Promise<StorageFolder[]> {
     .map((e) => ({ name: e.name, path: e.path, modified: e.modified }));
   subfolderCache.set(path, { at: now, dirs });
   return dirs;
+}
+
+// Drop cached listings for a folder that just changed (a new sub-folder or an
+// upload), plus its parent's sub-folder list, so the editor sees the change
+// immediately instead of waiting out the 60s TTL.
+export function invalidateStoragePath(path: string): void {
+  const rel = normalizeRel(path);
+  subfolderCache.delete(rel);
+  const parent = parentOf(rel);
+  if (parent !== null) subfolderCache.delete(parent);
+  for (const key of [...galleryCache.keys()]) {
+    const folder = key.split("::")[0];
+    if (folder === rel || folder === parent) galleryCache.delete(key);
+  }
+}
+
+/* ----------------------------- Mutations ------------------------------ */
+
+// Create a folder (WebDAV MKCOL). The parent must already exist. Treated as
+// success if the folder is already there. Rejects path traversal.
+export async function createFolder(path: string): Promise<void> {
+  const cfg = readConfig();
+  if (!cfg) throw new Error("Image storage is not configured");
+  if (cfg.mode !== "webdav") {
+    throw new Error("Creating folders is only supported on WebDAV storage");
+  }
+  const rel = normalizeRel(path);
+  if (!rel || rel.split("/").some((s) => s === "..")) throw new Error("Invalid folder path");
+  const auth = "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
+  const enc = rel.split("/").map(encodeURIComponent).join("/");
+  const res = await fetch(`${cfg.base}/${enc}/`, { method: "MKCOL", headers: { Authorization: auth } });
+  // 201 Created; 405 Method Not Allowed is what most servers return when the
+  // collection already exists — treat that as success.
+  if (![201, 405].includes(res.status)) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `Create folder failed (${res.status})${detail ? `: ${detail.slice(0, 160)}` : ""}`,
+    );
+  }
+  invalidateStoragePath(rel);
 }
 
 /* ---------------------------- Media proxy ----------------------------- */
