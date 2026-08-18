@@ -334,7 +334,9 @@ export type GalleryAlbum = z.infer<typeof galleryAlbumSchema>;
 export const galleryBrowserSettingsSchema = z.object({
   folder: z.string().default(""), // parent folder whose sub-folders become albums
   overrides: z.record(z.string(), galleryFolderOverrideSchema).default({}), // keyed by sub-folder path
-  albumSort: z.enum(["name-asc", "name-desc", "newest", "oldest"]).default("name-asc"),
+  albumSort: z.enum(["name-asc", "name-desc", "newest", "oldest", "custom"]).default("name-asc"),
+  order: z.array(z.string()).default([]), // album folder paths, in custom order (albumSort === "custom")
+  imageOrder: z.record(z.string(), z.array(z.string())).default({}), // folder path -> image filenames, in custom order
   imageSort: z.enum(["name-asc", "name-desc", "newest", "oldest"]).default("name-asc"),
   imageLimit: z.number().int().min(0).max(500).default(0), // per-album cap (0 = all)
   // Album grid (the cover cards)

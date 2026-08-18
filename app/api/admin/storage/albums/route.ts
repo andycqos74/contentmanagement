@@ -22,7 +22,13 @@ export async function GET(req: Request) {
     const albums = await Promise.all(
       dirs.map(async (d) => {
         const images = await listFolderImages(d.path, "name-asc", 0);
-        return { path: d.path, name: d.name, count: images.length, cover: images[0]?.imageUrl ?? "" };
+        return {
+          path: d.path,
+          name: d.name,
+          count: images.length,
+          cover: images[0]?.imageUrl ?? "",
+          modified: d.modified ?? null,
+        };
       }),
     );
     return NextResponse.json({ albums });
