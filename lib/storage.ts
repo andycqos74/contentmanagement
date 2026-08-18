@@ -415,7 +415,7 @@ async function listCombined(cfg: StorageConfig, path: string): Promise<StorageLi
 /* --------------------------- Gallery folders -------------------------- */
 
 export type GallerySort = "name-asc" | "name-desc" | "newest" | "oldest";
-export type GalleryImage = { imageUrl: string; caption: string };
+export type GalleryImage = { imageUrl: string; caption: string; name: string };
 
 const GALLERY_IMAGE_RE = /\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i;
 function isImageEntry(e: StorageEntry): boolean {
@@ -447,7 +447,11 @@ export function galleryImagesFromEntries(
     const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
     return sort === "name-desc" ? -cmp : cmp;
   });
-  const items = images.map((e) => ({ imageUrl: e.url as string, caption: prettyCaption(e.name) }));
+  const items = images.map((e) => ({
+    imageUrl: e.url as string,
+    caption: prettyCaption(e.name),
+    name: e.name,
+  }));
   return limit > 0 ? items.slice(0, limit) : items;
 }
 

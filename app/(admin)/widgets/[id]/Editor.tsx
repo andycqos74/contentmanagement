@@ -189,6 +189,8 @@ export function Editor({
     settings.folder,
     settings.overrides,
     settings.albumSort,
+    settings.order,
+    settings.imageOrder,
     settings.imageSort,
     settings.imageLimit,
     storageTick,

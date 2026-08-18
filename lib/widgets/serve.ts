@@ -31,6 +31,17 @@ function prettyFolderName(name: string): string {
   return name.replace(/[-_]+/g, " ").trim() || name;
 }
 
+// Apply a saved manual order (a list of image filenames) to a folder's images:
+// known files first in the saved sequence, any others (e.g. newly-uploaded)
+// appended in their existing (sorted) order.
+function applyImageOrder<T extends { name: string }>(all: T[], order: string[]): T[] {
+  if (!order.length) return all;
+  const rank = new Map(order.map((n, i) => [n, i]));
+  const known = all.filter((i) => rank.has(i.name)).sort((a, b) => rank.get(a.name)! - rank.get(b.name)!);
+  const rest = all.filter((i) => !rank.has(i.name));
+  return [...known, ...rest];
+}
+
 // A gallery browser lists the sub-folders of its parent folder as albums. Each
 // album carries its own images inline so the rendered widget is self-contained
 // (no per-album fetch from inside the embed). Sub-folders are discovered live, so
@@ -44,7 +55,15 @@ export async function galleryBrowserAlbums(
   const dirs = await listSubfolders(settings.folder);
   const byName = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+  const orderRank = new Map(settings.order.map((p, i) => [p, i]));
   const sorted = [...dirs].sort((a, b) => {
+    if (settings.albumSort === "custom") {
+      // Known (manually-arranged) folders first, in saved order; the rest by name.
+      const ia = orderRank.has(a.path) ? orderRank.get(a.path)! : Infinity;
+      const ib = orderRank.has(b.path) ? orderRank.get(b.path)! : Infinity;
+      if (ia !== ib) return ia - ib;
+      return byName(a, b);
+    }
     if (settings.albumSort === "newest" || settings.albumSort === "oldest") {
       const am = a.modified ?? 0;
       const bm = b.modified ?? 0;
@@ -58,7 +77,10 @@ export async function galleryBrowserAlbums(
 
   const albums = await Promise.all(
     visible.map(async (d) => {
-      const all = await listFolderImages(d.path, settings.imageSort, 0);
+      const all = applyImageOrder(
+        await listFolderImages(d.path, settings.imageSort, 0),
+        settings.imageOrder[d.path] ?? [],
+      );
       const images = settings.imageLimit > 0 ? all.slice(0, settings.imageLimit) : all;
       const override = settings.overrides[d.path];
       const title = override?.title?.trim() || prettyFolderName(d.name);
@@ -83,8 +105,11 @@ function publicSettings(
   settings: Record<string, unknown>,
 ): Record<string, unknown> {
   if (type === "GALLERY_BROWSER") {
-    const { overrides: _drop, ...rest } = settings;
-    void _drop;
+    // overrides / order / imageOrder are applied server-side during resolution.
+    const { overrides: _o, order: _r, imageOrder: _i, ...rest } = settings;
+    void _o;
+    void _r;
+    void _i;
     return rest;
   }
   return settings;
