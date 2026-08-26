@@ -6,9 +6,11 @@ WORKDIR /app
 # OpenSSL is required by the Prisma engines.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-# Install deps first. postinstall runs `prisma generate`, so the schema must be present.
+# Install deps first. postinstall runs `prisma generate` and `copy-tinymce.mjs`,
+# so the schema and scripts must be present before npm ci.
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY scripts ./scripts
 RUN npm ci
 # Build the Next.js app.
 COPY . .
