@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,8 +11,8 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
-  PencilLine,
   Trash2,
+  X,
 } from "lucide-react";
 import { WidgetRenderer } from "@/components/widgets/WidgetRenderer";
 import {
@@ -94,7 +94,7 @@ export function Editor({
     (initial.items ?? []).map((x) => def.itemSchema.parse(x ?? {}) as Record<string, unknown>),
   );
 
-  const [tab, setTab] = useState<"content" | "design" | "embed">("content");
+  const [tab, setTab] = useState<"content" | "design">("content");
   const [status, setStatus] = useState(initial.status);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
@@ -105,6 +105,7 @@ export function Editor({
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
   const [galleryFolderItems, setGalleryFolderItems] = useState<Record<string, unknown>[]>([]);
   const [galleryBrowserAlbums, setGalleryBrowserAlbums] = useState<Record<string, unknown>[]>([]);
   const [storageTick, setStorageTick] = useState(0); // bumped when the editor creates a folder / uploads
@@ -249,300 +250,596 @@ export function Editor({
     ? `<script src="${appUrl}/consent.js" data-cms-widget="${initial.id}" async></script>`
     : `<div data-cms-widget="${initial.id}"></div>\n<script src="${appUrl}/embed.js" async></script>`;
 
+  const secBtn: React.CSSProperties = {
+    height: 36,
+    padding: "0 14px",
+    background: "#fff",
+    border: "1px solid #D0D5DD",
+    borderRadius: 9,
+    fontSize: 13.5,
+    fontWeight: 500,
+    color: "#344054",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  };
+
   return (
-    <div>
-      {/* Top bar */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-200">
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="flex items-center gap-2">
-            <PencilLine size={15} className="text-slate-400" />
+    <div style={{ margin: "-32px -28px 0" }}>
+      {/* Sticky sub-header */}
+      <div
+        className="sticky z-30 border-b bg-white"
+        style={{ top: 56, borderColor: "#E4E7EC" }}
+      >
+        <div
+          className="mx-auto flex flex-wrap items-center justify-between"
+          style={{ maxWidth: 1400, padding: "0 28px", minHeight: 62, gap: 20 }}
+        >
+          {/* Left */}
+          <div className="flex items-center" style={{ gap: 12 }}>
+            <Link
+              href="/dashboard"
+              style={{
+                width: 32,
+                height: 32,
+                display: "grid",
+                placeItems: "center",
+                border: "1px solid #E4E7EC",
+                borderRadius: 8,
+                color: "#475467",
+                textDecoration: "none",
+              }}
+              className="hover:bg-[#F2F4F7]"
+            >
+              <ArrowLeft size={15} />
+            </Link>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded border border-transparent px-1 text-lg font-semibold text-slate-900 hover:border-slate-300 focus:border-[#094582] focus:outline-none"
+              style={{
+                border: "1px solid transparent",
+                background: "transparent",
+                padding: "5px 8px",
+                borderRadius: 7,
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
+                color: "#101828",
+                width: 210,
+                outline: "none",
+              }}
+              className="hover:border-[#E4E7EC] focus:border-[#0A4B93]"
             />
+            <span
+              style={{
+                padding: "3px 9px",
+                borderRadius: 6,
+                background: "#F2F4F7",
+                color: "#475467",
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              {def.label}
+            </span>
+            <span
+              style={{
+                height: 23,
+                padding: "0 9px",
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                background: status === "PUBLISHED" ? "#ECFDF3" : "#FFFAEB",
+                border: `1px solid ${status === "PUBLISHED" ? "#ABEFC6" : "#FEDF89"}`,
+                color: status === "PUBLISHED" ? "#067647" : "#B54708",
+              }}
+            >
+              {status === "PUBLISHED" ? "Published" : "Draft"}
+            </span>
           </div>
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-            {def.label}
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-            }`}
-          >
-            {status === "PUBLISHED" ? "Published" : "Draft"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={remove}
-            className="rounded-md p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-            title="Delete"
-          >
-            <Trash2 size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-          >
-            {saving ? <Loader2 size={15} className="animate-spin" /> : savedTick ? <Check size={15} /> : null}
-            {savedTick ? "Saved" : "Save draft"}
-          </button>
-          <button
-            type="button"
-            onClick={publish}
-            className="rounded-md bg-[#094582] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0b3f70]"
-          >
-            Publish
-          </button>
+
+          {/* Right */}
+          <div className="flex items-center" style={{ gap: 8 }}>
+            {saving && (
+              <span style={{ fontSize: 13, color: "#B54708", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#F79009", display: "inline-block" }} />
+                Unsaved changes
+              </span>
+            )}
+            <button type="button" onClick={() => setEmbedOpen(true)} style={secBtn} className="hover:bg-[#F9FAFB]">
+              Embed code
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              style={{ ...secBtn, opacity: saving ? 0.6 : 1 }}
+              className="hover:bg-[#F9FAFB]"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : savedTick ? <Check size={14} /> : null}
+              {savedTick ? "Saved" : "Save draft"}
+            </button>
+            <button
+              type="button"
+              onClick={publish}
+              style={{
+                height: 36,
+                padding: "0 18px",
+                background: "#0A4B93",
+                color: "#fff",
+                borderRadius: 9,
+                fontSize: 13.5,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+              }}
+              className="hover:bg-[#073A75]"
+            >
+              Publish
+            </button>
+            <button
+              type="button"
+              onClick={remove}
+              style={{
+                width: 32,
+                height: 32,
+                display: "grid",
+                placeItems: "center",
+                border: "none",
+                background: "transparent",
+                color: "#98A2B3",
+                cursor: "pointer",
+                borderRadius: 7,
+              }}
+              className="hover:bg-red-50 hover:text-red-600"
+              title="Delete"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className={`grid gap-6 ${expanded ? "grid-cols-1" : "lg:grid-cols-[minmax(0,420px)_1fr]"}`}>
-        {/* Editing panel */}
-        <div className={`rounded-xl border border-slate-200 bg-white ${expanded ? "order-2" : ""}`}>
-          <div className="flex border-b border-slate-200 text-sm">
-            {(["content", "design", "embed"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`px-4 py-2.5 font-medium capitalize ${
-                  tab === t
-                    ? "border-b-2 border-[#094582] text-[#094582]"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+      {/* Body */}
+      <div
+        className="mx-auto"
+        style={{ maxWidth: 1400, padding: "20px 28px 64px" }}
+      >
+        <div
+          className={`grid gap-5 ${expanded ? "grid-cols-1" : ""}`}
+          style={
+            !expanded
+              ? { gridTemplateColumns: "392px minmax(0,1fr)", alignItems: "start" }
+              : undefined
+          }
+        >
+          {/* Control panel */}
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #E4E7EC",
+              borderRadius: 12,
+              ...(expanded ? { order: 2 } : {}),
+            }}
+          >
+            {/* Tab strip */}
+            <div
+              className="flex"
+              style={{
+                padding: 6,
+                gap: 4,
+                background: "#FAFBFC",
+                borderBottom: "1px solid #E4E7EC",
+              }}
+            >
+              {(["content", "design"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t as typeof tab)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    borderRadius: 8,
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: "pointer",
+                    background: tab === t ? "#fff" : "transparent",
+                    color: tab === t ? "#101828" : "#667085",
+                    boxShadow: tab === t ? "0 1px 2px rgba(16,24,40,.10)" : "none",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ padding: 18 }}>
+              {tab === "content" &&
+                (isBanner ? (
+                  <BannerControls
+                    items={items as BannerElement[]}
+                    setItems={(v) => setItems(v as Record<string, unknown>[])}
+                    selectedId={selectedElId}
+                    setSelectedId={setSelectedElId}
+                  />
+                ) : isSlider ? (
+                  <SliderControls
+                    items={items as SliderSlide[]}
+                    setItems={(v) => setItems(v as Record<string, unknown>[])}
+                    currentSlide={currentSlide}
+                    selectedElId={selectedElId}
+                    setSelectedElId={setSelectedElId}
+                  />
+                ) : isCookie ? (
+                  <CookieConsentForm
+                    settings={settings as unknown as CookieConsentSettings}
+                    set={setSettingsPatch}
+                    section="content"
+                  />
+                ) : isGallery ? (
+                  <GalleryContentForm
+                    settings={settings as unknown as GallerySettings}
+                    set={setSettingsPatch}
+                    items={items as unknown as GalleryItem[]}
+                    setItems={(v) => setItems(v as unknown as Record<string, unknown>[])}
+                  />
+                ) : isGalleryBrowser ? (
+                  <GalleryBrowserContentForm
+                    settings={settings as unknown as GalleryBrowserSettings}
+                    set={setSettingsPatch}
+                    onStorageChanged={() => setStorageTick((t) => t + 1)}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "#667085", margin: "0 0 10px" }}>
+                      Where does the content come from?
+                    </p>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                        marginBottom: 22,
+                      }}
+                    >
+                      {[
+                        { val: "MANUAL" as const, title: "Type it in", desc: "Add articles by hand" },
+                        { val: "DATA" as const, title: "From the database", desc: "Stays up to date on its own" },
+                      ].map(({ val, title, desc }) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setContentSource(val)}
+                          style={{
+                            padding: 12,
+                            borderRadius: 10,
+                            border: `1px solid ${contentSource === val ? "#0A4B93" : "#E4E7EC"}`,
+                            background: contentSource === val ? "#EEF4FB" : "#fff",
+                            boxShadow: contentSource === val ? "0 0 0 1px #0A4B93" : "none",
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "#101828" }}>{title}</div>
+                          <div style={{ fontSize: 12, color: "#667085", marginTop: 3 }}>{desc}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {contentSource === "MANUAL" ? (
+                      initial.type === "HERO_SLIDER" ? (
+                        <HeroContentEditor items={items as HeroSlide[]} setItems={(v) => setItems(v)} />
+                      ) : (
+                        <NewsContentEditor items={items as NewsItem[]} setItems={(v) => setItems(v)} />
+                      )
+                    ) : (
+                      <div className="space-y-3">
+                        <DataBindingForm
+                          dataSources={dataSources}
+                          dataFields={def.dataFields}
+                          dataSourceId={dataSourceId}
+                          setDataSourceId={setDataSourceId}
+                          binding={binding}
+                          setBinding={setBinding}
+                        />
+                        {previewError && (
+                          <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                            {previewError}
+                          </div>
+                        )}
+                        {!previewError && binding.table && (
+                          <div
+                            className="flex items-center"
+                            style={{
+                              gap: 8,
+                              padding: "11px 13px",
+                              background: "#ECFDF3",
+                              border: "1px solid #ABEFC6",
+                              borderRadius: 10,
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: "#067647",
+                            }}
+                          >
+                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#17B26A", flexShrink: 0 }} />
+                            {previewLoading ? "Loading…" : `${previewItems.length} articles found — shown in the preview`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+              {tab === "design" &&
+                (initial.type === "HERO_SLIDER" ? (
+                  <HeroSettingsForm
+                    settings={settings as unknown as HeroSettings}
+                    set={setSettingsPatch}
+                  />
+                ) : initial.type === "BANNER" ? (
+                  <BannerSettingsForm
+                    settings={settings as unknown as BannerSettings}
+                    set={setSettingsPatch}
+                  />
+                ) : initial.type === "COOKIE_CONSENT" ? (
+                  <CookieConsentForm
+                    settings={settings as unknown as CookieConsentSettings}
+                    set={setSettingsPatch}
+                    section="design"
+                  />
+                ) : initial.type === "SLIDER" ? (
+                  <SliderSettingsForm
+                    settings={settings as unknown as SliderSettings}
+                    set={setSettingsPatch}
+                  />
+                ) : initial.type === "GALLERY" ? (
+                  <GallerySettingsForm
+                    settings={settings as unknown as GallerySettings}
+                    set={setSettingsPatch}
+                  />
+                ) : initial.type === "GALLERY_BROWSER" ? (
+                  <GalleryBrowserSettingsForm
+                    settings={settings as unknown as GalleryBrowserSettings}
+                    set={setSettingsPatch}
+                  />
+                ) : (
+                  <NewsSettingsForm
+                    settings={settings as unknown as NewsSettings}
+                    set={setSettingsPatch}
+                  />
+                ))}
+            </div>
           </div>
 
-          <div className="p-4">
-            {tab === "content" &&
-              (isBanner ? (
-                <BannerControls
+          {/* Preview / canvas */}
+          <div style={expanded ? { order: 1 } : { position: "sticky", top: 130 }}>
+            <div className="mb-2 flex items-center justify-between" style={{ fontSize: 13, color: "#344054" }}>
+              <span style={{ fontWeight: 600 }}>
+                {isBanner || isSlider ? "Canvas — drag & resize" : "Preview"}
+              </span>
+              <div className="flex items-center" style={{ gap: 8 }}>
+                {contentSource === "DATA" && previewLoading && (
+                  <span className="inline-flex items-center" style={{ gap: 4, fontSize: 12.5, color: "#98A2B3" }}>
+                    <Loader2 size={12} className="animate-spin" /> updating
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-1 font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                  style={{ fontSize: 12.5 }}
+                  title={expanded ? "Collapse editor width" : "Expand canvas to full width"}
+                >
+                  {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                  {expanded ? "Collapse" : "Expand"}
+                </button>
+              </div>
+            </div>
+            <ErrorBoundary resetKey={settings}>
+              {isBanner ? (
+                <BannerCanvas
+                  settings={settings as unknown as BannerSettings}
                   items={items as BannerElement[]}
                   setItems={(v) => setItems(v as Record<string, unknown>[])}
                   selectedId={selectedElId}
                   setSelectedId={setSelectedElId}
                 />
               ) : isSlider ? (
-                <SliderControls
+                <SliderStage
+                  settings={settings as unknown as SliderSettings}
                   items={items as SliderSlide[]}
                   setItems={(v) => setItems(v as Record<string, unknown>[])}
                   currentSlide={currentSlide}
+                  setCurrentSlide={setCurrentSlide}
                   selectedElId={selectedElId}
                   setSelectedElId={setSelectedElId}
                 />
-              ) : isCookie ? (
-                <CookieConsentForm
-                  settings={settings as unknown as CookieConsentSettings}
-                  set={setSettingsPatch}
-                  section="content"
-                />
-              ) : isGallery ? (
-                <GalleryContentForm
-                  settings={settings as unknown as GallerySettings}
-                  set={setSettingsPatch}
-                  items={items as unknown as GalleryItem[]}
-                  setItems={(v) => setItems(v as unknown as Record<string, unknown>[])}
-                />
-              ) : isGalleryBrowser ? (
-                <GalleryBrowserContentForm
-                  settings={settings as unknown as GalleryBrowserSettings}
-                  set={setSettingsPatch}
-                  onStorageChanged={() => setStorageTick((t) => t + 1)}
-                />
               ) : (
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => setContentSource("MANUAL")}
-                      className={`rounded-md px-3 py-1.5 font-medium ${contentSource === "MANUAL" ? "bg-white shadow-sm" : "text-slate-500"}`}
-                    >
-                      Manual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setContentSource("DATA")}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium ${contentSource === "DATA" ? "bg-white shadow-sm" : "text-slate-500"}`}
-                    >
-                      <Database size={14} /> Data source
-                    </button>
-                  </div>
-
-                  {contentSource === "MANUAL" ? (
-                    initial.type === "HERO_SLIDER" ? (
-                      <HeroContentEditor items={items as HeroSlide[]} setItems={(v) => setItems(v)} />
-                    ) : (
-                      <NewsContentEditor items={items as NewsItem[]} setItems={(v) => setItems(v)} />
-                    )
-                  ) : (
-                    <div className="space-y-3">
-                      <DataBindingForm
-                        dataSources={dataSources}
-                        dataFields={def.dataFields}
-                        dataSourceId={dataSourceId}
-                        setDataSourceId={setDataSourceId}
-                        binding={binding}
-                        setBinding={setBinding}
-                      />
-                      {previewError && (
-                        <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-                          {previewError}
-                        </div>
-                      )}
-                      {!previewError && binding.table && (
-                        <div className="text-xs text-slate-500">
-                          {previewLoading ? "Loading…" : `${previewItems.length} row(s) matched.`}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-            {tab === "design" &&
-              (initial.type === "HERO_SLIDER" ? (
-                <HeroSettingsForm
-                  settings={settings as unknown as HeroSettings}
-                  set={setSettingsPatch}
-                />
-              ) : initial.type === "BANNER" ? (
-                <BannerSettingsForm
-                  settings={settings as unknown as BannerSettings}
-                  set={setSettingsPatch}
-                />
-              ) : initial.type === "COOKIE_CONSENT" ? (
-                <CookieConsentForm
-                  settings={settings as unknown as CookieConsentSettings}
-                  set={setSettingsPatch}
-                  section="design"
-                />
-              ) : initial.type === "SLIDER" ? (
-                <SliderSettingsForm
-                  settings={settings as unknown as SliderSettings}
-                  set={setSettingsPatch}
-                />
-              ) : initial.type === "GALLERY" ? (
-                <GallerySettingsForm
-                  settings={settings as unknown as GallerySettings}
-                  set={setSettingsPatch}
-                />
-              ) : initial.type === "GALLERY_BROWSER" ? (
-                <GalleryBrowserSettingsForm
-                  settings={settings as unknown as GalleryBrowserSettings}
-                  set={setSettingsPatch}
-                />
-              ) : (
-                <NewsSettingsForm
-                  settings={settings as unknown as NewsSettings}
-                  set={setSettingsPatch}
-                />
-              ))}
-
-            {tab === "embed" && (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-600">
-                  Paste this snippet into any website where the widget should appear:
-                </p>
-                <div className="relative">
-                  <pre className="overflow-x-auto rounded-lg bg-slate-900 p-3 pr-10 text-xs text-slate-100">
-                    {embedSnippet}
-                  </pre>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(embedSnippet);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1500);
+                <div
+                  style={{
+                    background: "#EFF1F4",
+                    border: "1px solid #E4E7EC",
+                    borderRadius: 12,
+                    padding: "28px 24px",
+                    minHeight: 520,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#fff",
+                      borderRadius: 10,
+                      padding: 22,
+                      boxShadow: "0 1px 3px rgba(16,24,40,.08)",
                     }}
-                    className="absolute right-2 top-2 rounded p-1.5 text-slate-300 hover:bg-white/10"
-                    title="Copy"
                   >
-                    {copied ? <Check size={15} /> : <Copy size={15} />}
-                  </button>
-                </div>
-                {status !== "PUBLISHED" && (
-                  <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    Publish the widget to make this embed live.
+                    {previewData.length === 0 && contentSource === "DATA" ? (
+                      <div className="grid h-40 place-items-center text-sm" style={{ color: "#98A2B3" }}>
+                        {binding.table ? "No rows matched your query." : "Select a data source and table."}
+                      </div>
+                    ) : (
+                      <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
+                    )}
                   </div>
-                )}
-                <p className="text-xs text-slate-400">
-                  JSON API:{" "}
-                  <code className="rounded bg-slate-100 px-1">
-                    {appUrl}/api/widgets/{initial.id}
-                  </code>
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Live preview / banner canvas */}
-        <div className={expanded ? "order-1" : "lg:sticky lg:top-6 lg:self-start"}>
-          <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-            <span>{isBanner || isSlider ? "Canvas — drag & resize" : "Live preview"}</span>
-            <div className="flex items-center gap-2">
-              {contentSource === "DATA" && previewLoading && (
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 size={12} className="animate-spin" /> updating
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="inline-flex items-center gap-1 rounded px-1.5 py-1 font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                title={expanded ? "Collapse editor width" : "Expand canvas to full width"}
-              >
-                {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-                {expanded ? "Collapse" : "Expand"}
-              </button>
-            </div>
-          </div>
-          <ErrorBoundary resetKey={settings}>
-          {isBanner ? (
-            <BannerCanvas
-              settings={settings as unknown as BannerSettings}
-              items={items as BannerElement[]}
-              setItems={(v) => setItems(v as Record<string, unknown>[])}
-              selectedId={selectedElId}
-              setSelectedId={setSelectedElId}
-            />
-          ) : isSlider ? (
-            <SliderStage
-              settings={settings as unknown as SliderSettings}
-              items={items as SliderSlide[]}
-              setItems={(v) => setItems(v as Record<string, unknown>[])}
-              currentSlide={currentSlide}
-              setCurrentSlide={setCurrentSlide}
-              selectedElId={selectedElId}
-              setSelectedElId={setSelectedElId}
-            />
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-              {previewData.length === 0 && contentSource === "DATA" ? (
-                <div className="grid h-40 place-items-center text-sm text-slate-400">
-                  {binding.table
-                    ? "No rows matched your query."
-                    : "Select a data source and table."}
                 </div>
-              ) : (
-                <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
               )}
-            </div>
-          )}
-          </ErrorBoundary>
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
+
+      {/* Embed drawer */}
+      {embedOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex justify-end"
+          style={{ background: "rgba(16,24,40,.45)" }}
+          onClick={() => setEmbedOpen(false)}
+        >
+          <div
+            className="flex flex-col"
+            style={{
+              width: 440,
+              height: "100%",
+              background: "#fff",
+              padding: 24,
+              gap: 18,
+              boxShadow: "-20px 0 60px rgba(16,24,40,.24)",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    letterSpacing: "-0.02em",
+                    color: "#101828",
+                    margin: 0,
+                  }}
+                >
+                  Put it on the site
+                </h2>
+                <p style={{ fontSize: 13.5, color: "#667085", marginTop: 4 }}>
+                  Paste this once, wherever the widget should appear.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmbedOpen(false)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  background: "#F2F4F7",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#475467",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Code block */}
+            <div style={{ position: "relative" }}>
+              <pre
+                style={{
+                  padding: "16px 44px 16px 16px",
+                  background: "#0F1729",
+                  borderRadius: 11,
+                  fontFamily: "var(--font-mono, monospace)",
+                  fontSize: 12,
+                  lineHeight: 1.7,
+                  color: "#E4E7EC",
+                  overflowX: "auto",
+                  margin: 0,
+                }}
+              >
+                {embedSnippet}
+              </pre>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(embedSnippet);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  height: 28,
+                  padding: "0 10px",
+                  background: "rgba(255,255,255,.12)",
+                  borderRadius: 7,
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                {copied ? <Check size={13} /> : <Copy size={13} />}
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+
+            {/* Status note */}
+            <div
+              className="flex items-start"
+              style={{
+                padding: "12px 13px",
+                background: status === "PUBLISHED" ? "#ECFDF3" : "#FFFAEB",
+                border: `1px solid ${status === "PUBLISHED" ? "#ABEFC6" : "#FEDF89"}`,
+                borderRadius: 10,
+                gap: 8,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: status === "PUBLISHED" ? "#067647" : "#B54708",
+              }}
+            >
+              {status === "PUBLISHED"
+                ? "This widget is published, so the snippet is live. Later edits stay hidden until you publish again."
+                : "Publish the widget to make this embed live."}
+            </div>
+
+            {/* API */}
+            <div style={{ borderTop: "1px solid #F2F4F7", paddingTop: 16 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#667085", marginBottom: 8 }}>
+                Or read the raw data
+              </p>
+              <code
+                style={{
+                  display: "block",
+                  padding: "9px 11px",
+                  background: "#F9FAFB",
+                  border: "1px solid #E4E7EC",
+                  borderRadius: 8,
+                  fontFamily: "var(--font-mono, monospace)",
+                  fontSize: 11.5,
+                  color: "#344054",
+                  overflowX: "auto",
+                }}
+              >
+                {appUrl}/api/widgets/{initial.id}
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
