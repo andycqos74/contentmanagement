@@ -26,6 +26,9 @@ export default async function AdminLayout({
               <Link href="/dashboard" className="rounded px-3 py-1.5 hover:bg-white/10">
                 Widgets
               </Link>
+              <Link href="/news" className="rounded px-3 py-1.5 hover:bg-white/10">
+                News
+              </Link>
               <Link href="/data-sources" className="rounded px-3 py-1.5 hover:bg-white/10">
                 Data sources
               </Link>

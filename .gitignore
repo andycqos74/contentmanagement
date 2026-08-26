@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# self-hosted TinyMCE is copied from node_modules by postinstall (scripts/copy-tinymce.mjs)
+/public/tinymce
 /.pnp
 .pnp.*
 .yarn/*
