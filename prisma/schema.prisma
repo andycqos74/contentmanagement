@@ -85,6 +85,15 @@ model DataSource {
   widgets     Widget[]
 }
 
+// Global key/value app settings (small config that isn't per-widget). Used to
+// remember which DataSource is the external "content" DB the News admin (and
+// future ported qos-admin pages) read/write. See lib/settings.ts.
+model AppSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
 // A reusable element style preset (size, colours, font weight, radius, …),
 // shared across every widget so designs stay consistent. `data` holds the
 // whitelisted style fields for `type` (see PRESET_STYLE_KEYS in the registry).

@@ -80,6 +80,9 @@ services:
       STORAGE_USERNAME: ${STORAGE_USERNAME:-}
       STORAGE_PASSWORD: ${STORAGE_PASSWORD:-}
       STORAGE_UPLOAD_PARENT: ${STORAGE_UPLOAD_PARENT:-root}
+      # Optional: base URL of the public website, used only to preview legacy
+      # image paths (/images/...) in the News admin. Defaults to https://www.qosfc.com.
+      NEXT_PUBLIC_CONTENT_SITE_URL: ${NEXT_PUBLIC_CONTENT_SITE_URL:-}
     ports:
       - "${APP_PORT:-3000}:3000"
 

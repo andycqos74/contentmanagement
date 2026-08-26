@@ -10,15 +10,17 @@
     "db:push": "prisma db push",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node scripts/copy-tinymce.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "copy-tinymce": "node scripts/copy-tinymce.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@tinymce/tinymce-react": "^6.3.0",
     "bcryptjs": "^3.0.3",
     "fast-xml-parser": "^5.10.1",
     "jose": "^6.2.4",
@@ -28,6 +30,7 @@
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "tinymce": "^8.8.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // TinyMCE self-hosted bundle — third-party minified code, not ours.
+    "public/tinymce/**",
   ]),
 ]);
 
