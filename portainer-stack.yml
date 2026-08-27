@@ -51,7 +51,7 @@ services:
     # Prebuilt image (published by .github/workflows/docker-publish.yml). To pin a
     # specific build instead of the latest, use e.g. :sha-<short> — see the repo's
     # Packages page for available tags.
-    image: ghcr.io/andycqos74/contentmanagement:sha-2e24581
+    image: ghcr.io/andycqos74/contentmanagement:sha-58cb880
     pull_policy: always
     # Build on the host instead (heavy — can crash small boxes). To use this,
     # comment out the two lines above and uncomment:
