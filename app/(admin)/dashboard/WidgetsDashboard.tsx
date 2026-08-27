@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import type { WidgetTypeKey } from "@/lib/widgets/registry";
+import { widgetColor } from "@/lib/colors";
 
 type WidgetRow = {
   id: string;
@@ -426,7 +427,9 @@ export function WidgetsDashboard({
             gap: 16,
           }}
         >
-          {filtered.map((w) => (
+          {filtered.map((w) => {
+            const hue = widgetColor(w.type);
+            return (
             <Link
               key={w.id}
               href={`/widgets/${w.id}`}
@@ -443,11 +446,13 @@ export function WidgetsDashboard({
                 }}
                 className="group hover:border-[#B9C6D8] hover:shadow-[0_6px_20px_rgba(16,24,40,.07)]"
               >
+                {/* 3px type-hue strip */}
+                <div style={{ height: 3, background: hue.text }} />
                 {/* Thumb */}
                 <div
                   className="relative flex items-center justify-center"
                   style={{
-                    height: 132,
+                    height: 129,
                     background: HATCH,
                     borderBottom: "1px solid #E4E7EC",
                   }}
@@ -494,10 +499,11 @@ export function WidgetsDashboard({
                       style={{
                         padding: "2px 8px",
                         borderRadius: 6,
-                        background: "#F2F4F7",
-                        color: "#475467",
+                        background: hue.bg,
+                        color: hue.text,
+                        border: `1px solid ${hue.border}`,
                         fontSize: 12,
-                        fontWeight: 500,
+                        fontWeight: 600,
                       }}
                     >
                       {w.typeLabel}
@@ -509,7 +515,8 @@ export function WidgetsDashboard({
                 </div>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -546,7 +553,9 @@ export function WidgetsDashboard({
           </div>
 
           {/* Rows */}
-          {filtered.map((w) => (
+          {filtered.map((w) => {
+            const hue = widgetColor(w.type);
+            return (
             <Link key={w.id} href={`/widgets/${w.id}`} style={{ textDecoration: "none" }}>
               <div
                 style={{
@@ -560,12 +569,13 @@ export function WidgetsDashboard({
                 }}
                 className="hover:bg-[#FAFBFC]"
               >
-                {/* Thumb */}
+                {/* Thumb with 3px left type-hue border */}
                 <div
                   style={{
                     height: 38,
                     borderRadius: 6,
                     background: HATCH,
+                    borderLeft: `3px solid ${hue.text}`,
                   }}
                 />
                 {/* Name + status */}
@@ -584,7 +594,21 @@ export function WidgetsDashboard({
                   </span>
                   <StatusPill status={w.status} />
                 </div>
-                <div style={{ fontSize: 13.5, color: "#475467" }}>{w.typeLabel}</div>
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    background: hue.bg,
+                    color: hue.text,
+                    border: `1px solid ${hue.border}`,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    justifySelf: "start",
+                    display: "inline-block",
+                  }}
+                >
+                  {w.typeLabel}
+                </span>
                 <div style={{ fontSize: 13.5, color: "#475467" }}>
                   {w.contentSource === "DATA" ? "Database" : "Manual"}
                 </div>
@@ -592,7 +616,8 @@ export function WidgetsDashboard({
                 <div style={{ fontSize: 16, color: "#98A2B3", textAlign: "center" }}>›</div>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 
