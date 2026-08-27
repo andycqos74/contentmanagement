@@ -8,7 +8,15 @@
   var current = document.currentScript;
   var origin = "";
   try {
-    origin = new URL(current.src).origin;
+    // Prefer an explicit data-cms-origin attribute so the correct CMS URL is
+    // always used regardless of how/when the script is executed (async, deferred,
+    // dynamically injected). Falls back to deriving the origin from the script src.
+    var explicitOrigin = current && current.getAttribute("data-cms-origin");
+    if (explicitOrigin) {
+      origin = new URL(explicitOrigin).origin;
+    } else {
+      origin = new URL(current.src).origin;
+    }
   } catch {
     origin = "";
   }

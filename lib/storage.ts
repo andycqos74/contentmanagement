@@ -82,6 +82,16 @@ function mediaBase(): string {
   return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "");
 }
 
+// Upgrade http:// to https:// on any public-facing URL so images are never
+// served as mixed content on the HTTPS display site. Localhost is left as-is
+// (http://localhost is not mixed content and often used in development).
+function enforceHttps(url: string): string {
+  if (url.startsWith("http://") && !/^http:\/\/localhost(:\d+)?(\/|$)/i.test(url)) {
+    return "https://" + url.slice(7);
+  }
+  return url;
+}
+
 // The public (proxy) URL for a storage file at `relPath` (a decoded relative path).
 function proxyUrl(relPath: string): string {
   const enc = relPath.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
@@ -93,7 +103,8 @@ export function publicFileUrl(relPath: string): string {
   const cfg = readConfig();
   if (cfg?.proxy) return proxyUrl(relPath);
   const base = cfg?.publicBase ?? "";
-  return `${base}/${relPath.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")}`;
+  const url = `${base}/${relPath.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")}`;
+  return enforceHttps(url);
 }
 
 // A rewriter that maps a URL under the authenticated storage base to the public
@@ -115,7 +126,11 @@ function publicRewriter(): ((url: string) => string) | null {
     // Any URL under the /dav base OR its non-/dav (legacy friendly) form becomes a
     // CMS /api/media URL, so previously-stored links start loading too.
     const stripped = stripDavSegment(base);
-    const prefixes = base === stripped ? [base] : [base, stripped];
+    // Also match the http:// variant of the base in case links were stored before
+    // the storage endpoint was moved to HTTPS.
+    const httpBase = base.replace(/^https:\/\//i, "http://");
+    const httpStripped = stripped.replace(/^https:\/\//i, "http://");
+    const prefixes = [...new Set([base, stripped, httpBase, httpStripped])];
     return (url: string) => {
       if (typeof url !== "string") return url;
       for (const pre of prefixes) {
@@ -128,19 +143,26 @@ function publicRewriter(): ((url: string) => string) | null {
     };
   }
 
-  if (base === publicBase) return null;
+  if (base === publicBase) {
+    // Even when base === publicBase, we still need to upgrade any http:// URLs
+    // that were stored before the storage endpoint moved to HTTPS.
+    return (url: string) => (typeof url === "string" ? enforceHttps(url) : url);
+  }
   return (url: string) => {
     if (typeof url !== "string") return url;
-    if (url === base) return publicBase;
-    if (url.startsWith(base + "/")) return publicBase + url.slice(base.length);
-    return url;
+    // Also match the http:// variant of the stored base (pre-migration links).
+    const httpBase = base.replace(/^https:\/\//i, "http://");
+    if (url === base || url === httpBase) return enforceHttps(publicBase);
+    if (url.startsWith(base + "/")) return enforceHttps(publicBase + url.slice(base.length));
+    if (url.startsWith(httpBase + "/")) return enforceHttps(publicBase + url.slice(httpBase.length));
+    return enforceHttps(url);
   };
 }
 
 // Rewrite a single URL to its public form (no-op if it isn't a storage URL).
 export function toPublicUrl(url: string): string {
   const rewrite = publicRewriter();
-  return rewrite ? rewrite(url) : url;
+  return rewrite ? rewrite(url) : enforceHttps(url);
 }
 
 // Deep-rewrite every storage URL found in arbitrary JSON (widget settings/items)
