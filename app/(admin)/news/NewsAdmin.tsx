@@ -80,6 +80,15 @@ function fmtListDate(v: string | null): string {
 
 const HATCH = "repeating-linear-gradient(135deg,#EDEFF3 0 7px,#F5F6F8 7px 14px)";
 
+// Legacy articles in the DB were stored with HTML-entity-encoded tags
+// (e.g. &lt;p&gt; instead of <p>). Decode them so TinyMCE receives proper HTML.
+function decodeHtmlEntities(html: string): string {
+  if (!html || typeof document === "undefined") return html;
+  const el = document.createElement("textarea");
+  el.innerHTML = html;
+  return el.value;
+}
+
 const inputCls =
   "w-full rounded-[9px] border border-[#D0D5DD] px-3 text-sm outline-none focus:border-[#0A4B93] focus:shadow-[0_0_0_3px_rgba(10,75,147,.18)]";
 
@@ -179,7 +188,7 @@ export function NewsAdmin({ defaultAuthor }: { defaultAuthor: string }) {
         subjectId: it.SubjectID ? String(it.SubjectID) : "",
         fixtureId: it.FixtureID ? String(it.FixtureID) : "",
         Headline: it.Headline ?? "",
-        ItemText: it.ItemText ?? "",
+        ItemText: decodeHtmlEntities(it.ItemText ?? ""),
         PublishDate: toLocalInput(it.PublishDate),
         UserID: it.UserID ?? defaultAuthor,
         NewCustomImage: it.NewCustomImage ?? "",
