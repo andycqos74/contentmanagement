@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import { categoryColor } from "@/lib/colors";
 import { Field, TextField } from "@/components/admin/fields";
 import { ImageField } from "@/components/admin/ImageField";
 import { RichText } from "@/components/admin/RichText";
@@ -643,17 +644,17 @@ function NewsList({
           className="hover:bg-[#FAFBFC]"
           onClick={() => onEdit(n.NewsID)}
         >
-          {/* Thumb */}
+          {/* Thumb with 3px left category-hue border */}
           <div style={{ flexShrink: 0 }}>
             {n.ImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={displayImage(n.ImageUrl)}
                 alt=""
-                style={{ width: 74, height: 50, borderRadius: 7, objectFit: "cover", display: "block" }}
+                style={{ width: 74, height: 50, borderRadius: 7, objectFit: "cover", display: "block", borderLeft: `3px solid ${categoryColor(n.CategoryShortName).text}` }}
               />
             ) : (
-              <div style={{ width: 74, height: 50, borderRadius: 7, background: HATCH }} />
+              <div style={{ width: 74, height: 50, borderRadius: 7, background: HATCH, borderLeft: `3px solid ${categoryColor(n.CategoryShortName).text}` }} />
             )}
           </div>
 
@@ -694,20 +695,24 @@ function NewsList({
               </span>
             </div>
             <div className="flex items-center" style={{ gap: 9, marginTop: 5 }}>
-              {n.CategoryShortName && (
+              {n.CategoryShortName && (() => {
+                const hue = categoryColor(n.CategoryShortName);
+                return (
                 <span
                   style={{
                     padding: "2px 8px",
                     borderRadius: 6,
-                    background: "#F2F4F7",
-                    color: "#475467",
+                    background: hue.bg,
+                    color: hue.text,
+                    border: `1px solid ${hue.border}`,
                     fontSize: 11.5,
-                    fontWeight: 500,
+                    fontWeight: 600,
                   }}
                 >
                   {n.CategoryShortName}
                 </span>
-              )}
+                );
+              })()}
               <span style={{ fontSize: 12.5, color: "#98A2B3" }}>{fmtListDate(n.PublishDate)}</span>
               {n.UserID && (
                 <>
@@ -796,6 +801,9 @@ function EditForm({
   const [socialOpen, setSocialOpen] = useState(true);
   const isNew = edit.NewsID === 0;
 
+  const selectedCatName = categories.find((c) => String(c.Id) === edit.categoryId)?.Text ?? null;
+  const catHue = categoryColor(selectedCatName);
+
   const panelStyle: React.CSSProperties = {
     background: "#fff",
     border: "1px solid #E4E7EC",
@@ -856,8 +864,25 @@ function EditForm({
               <ArrowLeft size={15} />
             </button>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", color: "#101828" }}>
-                {isNew ? "New article" : "Edit article"}
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", color: "#101828" }}>
+                  {isNew ? "New article" : "Edit article"}
+                </span>
+                {selectedCatName && (
+                  <span
+                    style={{
+                      padding: "2px 9px",
+                      borderRadius: 6,
+                      background: catHue.bg,
+                      border: `1px solid ${catHue.border}`,
+                      color: catHue.text,
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {selectedCatName}
+                  </span>
+                )}
               </div>
               {!isNew && edit.PublishDate && (
                 <div style={{ fontSize: 12.5, color: "#98A2B3" }}>
@@ -940,9 +965,9 @@ function EditForm({
       >
         {/* Left column */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Headline card */}
-          <div style={panelStyle}>
-            <label style={fieldLabel}>Headline</label>
+          {/* Headline card — 3px category-hue top border */}
+          <div style={{ ...panelStyle, borderTop: `3px solid ${catHue.text}`, paddingTop: 14 }}>
+            <label style={{ ...fieldLabel, color: catHue.text }}>Headline</label>
             <input
               value={edit.Headline}
               onChange={(e) => patch({ Headline: e.target.value })}
@@ -986,7 +1011,10 @@ function EditForm({
         <div style={{ width: 332, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Publishing */}
           <div style={panelStyle}>
-            <div style={panelHeading}>Publishing</div>
+            <div style={{ ...panelHeading, display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#0A4B93", flexShrink: 0, display: "inline-block" }} />
+              Publishing
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={fieldLabel}>Goes live</label>
@@ -1032,7 +1060,10 @@ function EditForm({
 
           {/* Lead image */}
           <div style={panelStyle}>
-            <div style={panelHeading}>Lead image</div>
+            <div style={{ ...panelHeading, display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#0E7090", flexShrink: 0, display: "inline-block" }} />
+              Lead image
+            </div>
             <ImageField
               label=""
               value={edit.NewCustomImage}
@@ -1042,7 +1073,10 @@ function EditForm({
 
           {/* Filing */}
           <div style={panelStyle}>
-            <div style={panelHeading}>Filing</div>
+            <div style={{ ...panelHeading, display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#5925DC", flexShrink: 0, display: "inline-block" }} />
+              Filing
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={fieldLabel}>
@@ -1104,7 +1138,8 @@ function EditForm({
               onClick={() => setSocialOpen((v) => !v)}
               style={{ marginBottom: socialOpen ? 13 : 0 }}
             >
-              <div className="flex items-center" style={{ gap: 8 }}>
+              <div className="flex items-center" style={{ gap: 7 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: "#C4320A", flexShrink: 0, display: "inline-block" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#101828" }}>Social text</span>
                 <span
                   style={{

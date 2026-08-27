@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { WidgetRenderer } from "@/components/widgets/WidgetRenderer";
+import { widgetColor } from "@/lib/colors";
 import {
   dataBindingSchema,
   getWidgetDef,
@@ -75,6 +76,7 @@ export function Editor({
 }) {
   const router = useRouter();
   const def = getWidgetDef(initial.type);
+  const typeHue = widgetColor(initial.type);
   const isBanner = initial.type === "BANNER";
   const isCookie = initial.type === "COOKIE_CONSENT";
   const isSlider = initial.type === "SLIDER";
@@ -98,6 +100,14 @@ export function Editor({
   const [status, setStatus] = useState(initial.status);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
+  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+
+  // Dirty tracking: stringify current editable state and compare to last-saved snapshot.
+  const [savedSnapshot, setSavedSnapshot] = useState(() =>
+    JSON.stringify({ name: initial.name, settings: def.settingsSchema.parse(initial.settings ?? {}), contentSource: initial.contentSource, dataSourceId: initial.dataSourceId, dataBinding: dataBindingSchema.parse(initial.dataBinding ?? {}), items: (initial.items ?? []).map((x) => def.itemSchema.parse(x ?? {})) })
+  );
+  const currentSnapshot = JSON.stringify({ name, settings, contentSource, dataSourceId, dataBinding: binding, items });
+  const dirty = currentSnapshot !== savedSnapshot;
   const [previewItems, setPreviewItems] = useState<Record<string, unknown>[]>([]);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -208,14 +218,16 @@ export function Editor({
 
   const save = useCallback(async (): Promise<boolean> => {
     setSaving(true);
+    const body = { name, settings, contentSource, dataSourceId, dataBinding: binding, items };
     const res = await fetch(`/api/admin/widgets/${initial.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, settings, contentSource, dataSourceId, dataBinding: binding, items }),
+      body: JSON.stringify(body),
     });
     setSaving(false);
     if (res.ok) {
       setSavedTick(true);
+      setSavedSnapshot(JSON.stringify(body));
       setTimeout(() => setSavedTick(false), 1500);
       router.refresh();
       return true;
@@ -315,10 +327,11 @@ export function Editor({
               style={{
                 padding: "3px 9px",
                 borderRadius: 6,
-                background: "#F2F4F7",
-                color: "#475467",
+                background: typeHue.bg,
+                border: `1px solid ${typeHue.border}`,
+                color: typeHue.text,
                 fontSize: 12,
-                fontWeight: 500,
+                fontWeight: 600,
               }}
             >
               {def.label}
@@ -343,7 +356,7 @@ export function Editor({
 
           {/* Right */}
           <div className="flex items-center" style={{ gap: 8 }}>
-            {saving && (
+            {dirty && !saving && (
               <span style={{ fontSize: 13, color: "#B54708", display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#F79009", display: "inline-block" }} />
                 Unsaved changes
@@ -422,9 +435,12 @@ export function Editor({
               background: "#fff",
               border: "1px solid #E4E7EC",
               borderRadius: 12,
+              overflow: "hidden",
               ...(expanded ? { order: 2 } : {}),
             }}
           >
+            {/* 3px type-hue strip */}
+            <div style={{ height: 3, background: typeHue.text }} />
             {/* Tab strip */}
             <div
               className="flex"
@@ -620,14 +636,48 @@ export function Editor({
           {/* Preview / canvas */}
           <div style={expanded ? { order: 1 } : { position: "sticky", top: 130 }}>
             <div className="mb-2 flex items-center justify-between" style={{ fontSize: 13, color: "#344054" }}>
-              <span style={{ fontWeight: 600 }}>
-                {isBanner || isSlider ? "Canvas — drag & resize" : "Preview"}
-              </span>
               <div className="flex items-center" style={{ gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {isBanner || isSlider ? "Canvas — drag & resize" : "Preview"}
+                </span>
+                {!isBanner && !isSlider && (
+                  <span style={{ fontSize: 12.5, color: "#98A2B3" }}>updates as you edit</span>
+                )}
                 {contentSource === "DATA" && previewLoading && (
                   <span className="inline-flex items-center" style={{ gap: 4, fontSize: 12.5, color: "#98A2B3" }}>
                     <Loader2 size={12} className="animate-spin" /> updating
                   </span>
+                )}
+              </div>
+              <div className="flex items-center" style={{ gap: 8 }}>
+                {/* Device picker — only for the standard preview, not banner/slider canvas */}
+                {!isBanner && !isSlider && (
+                  <div
+                    className="flex"
+                    style={{ padding: 3, background: "#EDEFF3", borderRadius: 9, gap: 2 }}
+                  >
+                    {(["desktop", "tablet", "mobile"] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDevice(d)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 7,
+                          fontSize: 12.5,
+                          fontWeight: 500,
+                          border: "none",
+                          cursor: "pointer",
+                          background: device === d ? "#fff" : "transparent",
+                          color: device === d ? "#101828" : "#667085",
+                          boxShadow: device === d ? "0 1px 2px rgba(16,24,40,.10)" : "none",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {d === "desktop" ? "Desktop" : d === "tablet" ? "Tablet" : "Phone"}
+                      </button>
+                    ))}
+                  </div>
                 )}
                 <button
                   type="button"
@@ -668,23 +718,45 @@ export function Editor({
                     borderRadius: 12,
                     padding: "28px 24px",
                     minHeight: 520,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                   }}
                 >
                   <div
                     style={{
-                      background: "#fff",
-                      borderRadius: 10,
-                      padding: 22,
-                      boxShadow: "0 1px 3px rgba(16,24,40,.08)",
+                      width: "100%",
+                      maxWidth: device === "tablet" ? 720 : device === "mobile" ? 380 : "100%",
+                      transition: "max-width .25s",
                     }}
                   >
-                    {previewData.length === 0 && contentSource === "DATA" ? (
-                      <div className="grid h-40 place-items-center text-sm" style={{ color: "#98A2B3" }}>
-                        {binding.table ? "No rows matched your query." : "Select a data source and table."}
-                      </div>
-                    ) : (
-                      <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
-                    )}
+                    <div
+                      style={{
+                        background: "#fff",
+                        borderRadius: 10,
+                        padding: 22,
+                        boxShadow: "0 1px 3px rgba(16,24,40,.08)",
+                      }}
+                    >
+                      {previewData.length === 0 && contentSource === "DATA" ? (
+                        <div className="grid h-40 place-items-center text-sm" style={{ color: "#98A2B3" }}>
+                          {binding.table ? "No rows matched your query." : "Select a data source and table."}
+                        </div>
+                      ) : (
+                        <WidgetRenderer type={initial.type} settings={settings} items={previewData} />
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        fontFamily: "var(--font-mono, monospace)",
+                        fontSize: 11,
+                        color: "#98A2B3",
+                        marginTop: 10,
+                      }}
+                    >
+                      {device === "desktop" ? "1240 px — desktop" : device === "tablet" ? "768 px — tablet" : "390 px — phone"}
+                    </div>
                   </div>
                 </div>
               )}
