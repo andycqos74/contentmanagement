@@ -10,7 +10,7 @@ import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 // The column the editor reads and writes.
 // ASSUMPTION: needs confirming against the live site - the table has both
 // CMSPageContent and NewCMSPageContent. Change this one constant to switch.
-export const CONTENT_COLUMN = "CMSPageContent" as "CMSPageContent" | "NewCMSPageContent";
+export const CONTENT_COLUMN = "NewCMSPageContent" as "CMSPageContent" | "NewCMSPageContent";
 
 export type PageListItem = {
   CMSPageID: number;
