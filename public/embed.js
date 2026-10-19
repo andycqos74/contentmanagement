@@ -3,6 +3,13 @@
  *   <div data-cms-widget="WIDGET_ID"></div>
  *   <script src="https://YOUR_HOST/embed.js" async></script>
  * Injects a responsive, auto-resizing iframe for each placeholder.
+ *
+ * Pages (WYSIWYG content) are rendered inline - no iframe:
+ *   <div data-cms-page="PAGE_SLUG"></div>
+ *   <script src="https://YOUR_HOST/embed.js" async></script>
+ * The published HTML is fetched from /api/pages/SLUG and placed in a Shadow DOM,
+ * so it inherits the host page's width/flow but its styling is isolated both
+ * ways. Add data-cms-title="true" to also show the page title as an <h1>.
  */
 (function () {
   var current = document.currentScript;
@@ -41,9 +48,44 @@
     el._cmsIframe = iframe;
   }
 
+  function mountPage(el) {
+    if (el.getAttribute("data-cms-mounted")) return;
+    var slug = el.getAttribute("data-cms-page");
+    if (!slug) return;
+    el.setAttribute("data-cms-mounted", "1");
+
+    fetch(origin + "/api/pages/" + encodeURIComponent(slug))
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (page) {
+        var root = el.attachShadow ? el.attachShadow({ mode: "open" }) : el;
+        var style = document.createElement("style");
+        style.textContent = ":host{display:block}" + (page.css || "");
+        var body = document.createElement("div");
+        body.className = "cms-page";
+        if (el.getAttribute("data-cms-title") === "true") {
+          var h = document.createElement("h1");
+          h.textContent = page.title;
+          body.appendChild(h);
+        }
+        var content = document.createElement("div");
+        content.innerHTML = page.html; // sanitised server-side on save/publish
+        body.appendChild(content);
+        root.appendChild(style);
+        root.appendChild(body);
+      })
+      .catch(function () {
+        el.removeAttribute("data-cms-mounted");
+      });
+  }
+
   function mountAll() {
     var els = document.querySelectorAll("[data-cms-widget]");
     for (var i = 0; i < els.length; i++) mount(els[i]);
+    var pages = document.querySelectorAll("[data-cms-page]");
+    for (var j = 0; j < pages.length; j++) mountPage(pages[j]);
   }
 
   function iframeForSource(source) {

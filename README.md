@@ -75,6 +75,24 @@ The loader injects an auto-resizing iframe pointing at `/embed/WIDGET_ID`, so th
 is fully style-isolated from the host page. The raw JSON is also available at
 `GET /api/widgets/WIDGET_ID` (CORS-enabled).
 
+## Pages (WYSIWYG content)
+
+**Pages** in the admin nav is a TinyMCE editor for rich-text pages stored in the CMS
+database (`Page` model — run `npm run db:push`). Like widgets, a page has a draft and a
+published snapshot; HTML is sanitised on save and publish.
+
+Show a published page on a website **without an iframe**:
+
+```html
+<div data-cms-page="PAGE_SLUG"></div>
+<script src="https://YOUR_HOST/embed.js" async></script>
+```
+
+`embed.js` fetches `GET /api/pages/PAGE_SLUG` (CORS-enabled JSON: `title`, `html`, `css`)
+and renders it inline inside a Shadow DOM (isolated styling, flows with the host layout).
+Add `data-cms-title="true"` to show the title. Alternatives: link to the server-rendered
+`/p/PAGE_SLUG`, or fetch the JSON and render `html` yourself (best for SEO).
+
 ### Cookie Consent embed
 
 The Cookie Consent widget must overlay the host page (fixed) and store the choice in the
