@@ -1,51 +1,51 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/api";
+import { getContentPool } from "@/lib/news/service";
 import { pageInputSchema } from "@/lib/pages/input";
-import { sanitizePageHtml, slugify } from "@/lib/pages/sanitize";
+import { getById, update } from "@/lib/pages/repository";
 
 export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 export async function GET(_req: Request, { params }: Ctx) {
   const { res } = await requireUser();
   if (res) return res;
-  const page = await prisma.page.findUnique({ where: { id: (await params).id } });
-  if (!page) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ page });
+  const id = parseId((await params).id);
+  if (id === null) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  const conn = await getContentPool();
+  if ("error" in conn) return NextResponse.json({ error: conn.error }, { status: 400 });
+  try {
+    const page = await getById(conn.pool, id);
+    if (!page) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ page });
+  } catch (e) {
+    return NextResponse.json({ error: `Could not load page: ${e instanceof Error ? e.message : "query failed"}` }, { status: 502 });
+  }
 }
 
-// Save the draft. The public site keeps serving the published snapshot.
+// Saves go straight to the live cms_pages row.
 export async function PUT(req: Request, { params }: Ctx) {
   const { res } = await requireUser();
   if (res) return res;
-  const { id } = await params;
-
+  const id = parseId((await params).id);
+  if (id === null) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   const parsed = pageInputSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
-  const existing = await prisma.page.findUnique({ where: { id } });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const slug = slugify(parsed.data.slug || parsed.data.title);
-  if (!slug) return NextResponse.json({ error: "Could not derive a URL slug" }, { status: 400 });
-  const clash = await prisma.page.findUnique({ where: { slug }, select: { id: true } });
-  if (clash && clash.id !== id) {
-    return NextResponse.json({ error: `The slug "${slug}" is already in use` }, { status: 409 });
+  const conn = await getContentPool();
+  if ("error" in conn) return NextResponse.json({ error: conn.error }, { status: 400 });
+  try {
+    if (!(await getById(conn.pool, id))) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await update(conn.pool, id, parsed.data.title, parsed.data.content);
+    return NextResponse.json({ id });
+  } catch (e) {
+    return NextResponse.json({ error: `Save failed: ${e instanceof Error ? e.message : "update failed"}` }, { status: 502 });
   }
-
-  const page = await prisma.page.update({
-    where: { id },
-    data: { title: parsed.data.title, slug, content: sanitizePageHtml(parsed.data.content) },
-  });
-  return NextResponse.json({ page });
-}
-
-export async function DELETE(_req: Request, { params }: Ctx) {
-  const { res } = await requireUser();
-  if (res) return res;
-  await prisma.page.deleteMany({ where: { id: (await params).id } });
-  return NextResponse.json({ ok: true });
 }

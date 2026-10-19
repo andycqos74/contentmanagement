@@ -1,22 +1,32 @@
-import { prisma } from "@/lib/db";
+import { getContentPool } from "@/lib/news/service";
+import { getByShortName } from "./repository";
+import { sanitizePageHtml } from "./sanitize";
 
-export type PublishedPage = {
-  id: string;
+export type PublicPage = {
+  id: number;
   title: string;
   slug: string;
   html: string;
-  publishedAt: string | null;
+  updatedAt: string | null;
 };
 
-// The published snapshot of a page by slug, or null when missing/unpublished.
-export async function getPublishedPage(slug: string): Promise<PublishedPage | null> {
-  const page = await prisma.page.findUnique({ where: { slug } });
-  if (!page || page.status !== "PUBLISHED" || page.publishedContent === null) return null;
-  return {
-    id: page.id,
-    title: page.publishedTitle ?? page.title,
-    slug: page.slug,
-    html: page.publishedContent,
-    publishedAt: page.publishedAt?.toISOString() ?? null,
-  };
+// A page by its CMSPageShortName, with HTML whitelisted for public output
+// (the legacy content is not sanitised at rest). Null when missing or the
+// content DB is unavailable.
+export async function getPublicPage(slug: string): Promise<PublicPage | null> {
+  const conn = await getContentPool();
+  if ("error" in conn) return null;
+  try {
+    const page = await getByShortName(conn.pool, slug);
+    if (!page) return null;
+    return {
+      id: page.CMSPageID,
+      title: page.CMSPageLongName,
+      slug: page.CMSPageShortName,
+      html: sanitizePageHtml(page.Content),
+      updatedAt: page.CMSLastUpdated,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -107,22 +107,3 @@ model ElementPreset {
 
   @@index([type])
 }
-
-// A rich-text (WYSIWYG) content page. `content` is the working draft HTML;
-// `publishedContent` is the sanitised snapshot served publicly (via /p/[slug],
-// /api/pages/[slug] and the no-iframe embed loader) until re-published.
-model Page {
-  id               String       @id // short public nanoid
-  title            String
-  slug             String       @unique
-  status           WidgetStatus @default(DRAFT)
-  content          String       @db.LongText
-  publishedTitle   String?
-  publishedContent String?      @db.LongText
-  publishedAt      DateTime?
-  createdById      String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-
-  @@index([status])
-}

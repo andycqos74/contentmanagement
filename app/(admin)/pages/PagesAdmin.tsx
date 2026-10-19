@@ -3,16 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import type { PageListItem } from "@/lib/pages/repository";
 
-type Row = { id: string; title: string; slug: string; status: "DRAFT" | "PUBLISHED"; updatedAt: string };
-
-export function PagesAdmin({ pages }: { pages: Row[] }) {
+export function PagesAdmin({ pages }: { pages: PageListItem[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function create() {
+    const shortName = window.prompt("Short name (used in embed code and URLs, max 50 chars, e.g. about-us)");
+    if (!shortName?.trim()) return;
     const title = window.prompt("Page title");
     if (!title?.trim()) return;
     setBusy(true);
@@ -20,19 +21,12 @@ export function PagesAdmin({ pages }: { pages: Row[] }) {
     const res = await fetch("/api/admin/pages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ shortName, title }),
     });
     const d = await res.json().catch(() => ({}));
     setBusy(false);
-    if (res.ok) router.push(`/pages/${d.page.id}`);
+    if (res.ok) router.push(`/pages/${d.id}`);
     else setError(d.error || "Could not create page");
-  }
-
-  async function remove(p: Row) {
-    if (!window.confirm(`Delete "${p.title}"? Embeds of this page will stop working.`)) return;
-    const res = await fetch(`/api/admin/pages/${p.id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
-    else setError("Delete failed");
   }
 
   return (
@@ -50,22 +44,20 @@ export function PagesAdmin({ pages }: { pages: Row[] }) {
       </div>
       {error && <p style={{ color: "#B42318", fontSize: 13, marginBottom: 12 }}>{error}</p>}
       <div style={{ background: "#fff", border: "1px solid #E4E7EC", borderRadius: 12 }}>
-        {pages.length === 0 && (
-          <p style={{ padding: 24, color: "#667085", fontSize: 14 }}>No pages yet. Create one to start writing.</p>
-        )}
+        {pages.length === 0 && <p style={{ padding: 24, color: "#667085", fontSize: 14 }}>No pages found.</p>}
         {pages.map((p) => (
-          <div key={p.id} className="flex items-center justify-between" style={{ padding: "12px 16px", borderTop: "1px solid #F2F4F7" }}>
-            <Link href={`/pages/${p.id}`} style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#101828" }}>{p.title}</div>
-              <div style={{ fontSize: 12, color: "#667085" }}>/p/{p.slug}</div>
-            </Link>
-            <span style={{ fontSize: 12, fontWeight: 600, marginRight: 16, color: p.status === "PUBLISHED" ? "#067647" : "#B54708" }}>
-              {p.status === "PUBLISHED" ? "Published" : "Draft"}
-            </span>
-            <button onClick={() => remove(p)} aria-label={`Delete ${p.title}`} style={{ color: "#667085" }}>
-              <Trash2 size={16} />
-            </button>
-          </div>
+          <Link
+            key={p.CMSPageID}
+            href={`/pages/${p.CMSPageID}`}
+            className="flex items-center justify-between"
+            style={{ padding: "12px 16px", borderTop: "1px solid #F2F4F7" }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#101828" }}>{p.CMSPageLongName}</div>
+              <div style={{ fontSize: 12, color: "#667085" }}>{p.CMSPageShortName}</div>
+            </div>
+            <span style={{ fontSize: 12, color: "#667085" }}>{p.CMSLastUpdated ?? ""}</span>
+          </Link>
         ))}
       </div>
     </div>
