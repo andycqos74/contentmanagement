@@ -7,6 +7,8 @@ function isPublic(pathname: string): boolean {
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/widgets") || // public widget JSON
+    pathname.startsWith("/api/pages") || // public page JSON (no-iframe embed)
+    pathname.startsWith("/p/") || // public server-rendered pages
     pathname.startsWith("/api/media") || // public image proxy
     pathname.startsWith("/embed") // iframe render + loader
   );
