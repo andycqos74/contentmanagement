@@ -77,21 +77,24 @@ is fully style-isolated from the host page. The raw JSON is also available at
 
 ## Pages (WYSIWYG content)
 
-**Pages** in the admin nav is a TinyMCE editor for rich-text pages stored in the CMS
-database (`Page` model — run `npm run db:push`). Like widgets, a page has a draft and a
-published snapshot; HTML is sanitised on save and publish.
+**Pages** in the admin nav is a TinyMCE editor for the live `cms_pages` table on the
+content database (the same data source News uses). It edits `CMSPageLongName` and
+`CMSPageContent` (set `CONTENT_COLUMN` in `lib/pages/repository.ts` to use
+`NewCMSPageContent` instead) and stamps `CMSLastUpdated`; `CMSPageMobileContent` and
+`ImageURL` are left untouched. There is no draft step - **saves are live**.
 
-Show a published page on a website **without an iframe**:
+Show a page on a website **without an iframe**, using its `CMSPageShortName`:
 
 ```html
-<div data-cms-page="PAGE_SLUG"></div>
+<div data-cms-page="PAGE_SHORT_NAME"></div>
 <script src="https://YOUR_HOST/embed.js" async></script>
 ```
 
-`embed.js` fetches `GET /api/pages/PAGE_SLUG` (CORS-enabled JSON: `title`, `html`, `css`)
-and renders it inline inside a Shadow DOM (isolated styling, flows with the host layout).
-Add `data-cms-title="true"` to show the title. Alternatives: link to the server-rendered
-`/p/PAGE_SLUG`, or fetch the JSON and render `html` yourself (best for SEO).
+`embed.js` fetches `GET /api/pages/PAGE_SHORT_NAME` (CORS-enabled JSON: `title`, `html`,
+`css`; HTML is whitelisted on output) and renders it inline inside a Shadow DOM (isolated
+styling, flows with the host layout). Add `data-cms-title="true"` to show the title.
+Alternatives: link to the server-rendered `/p/PAGE_SHORT_NAME`, or fetch the JSON and
+render `html` yourself (best for SEO).
 
 ### Cookie Consent embed
 
