@@ -22,6 +22,8 @@ export function DataBindingForm({
   setDataSourceId,
   binding,
   setBinding,
+  singleRow = false,
+  onColumns,
 }: {
   dataSources: Source[];
   dataFields: DataField[];
@@ -29,6 +31,10 @@ export function DataBindingForm({
   setDataSourceId: (id: string | null) => void;
   binding: DataBinding;
   setBinding: (b: DataBinding) => void;
+  // Single-row mode (banner): the sort is mandatory and the limit is fixed at 1.
+  singleRow?: boolean;
+  // Reports the selected table's columns (e.g. for element-level bindings).
+  onColumns?: (columns: string[]) => void;
 }) {
   const [tables, setTables] = useState<string[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
@@ -75,6 +81,10 @@ export function DataBindingForm({
     };
   }, [dataSourceId, binding.table]);
 
+  useEffect(() => {
+    onColumns?.(binding.table ? columns : []);
+  }, [columns, binding.table, onColumns]);
+
   if (dataSources.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
@@ -114,7 +124,7 @@ export function DataBindingForm({
           </select>
         </Field>
 
-        <Field label="Table">
+        <Field label={singleRow ? "Table / view" : "Table"}>
           <select
             className={selCls}
             value={binding.table}
@@ -133,6 +143,7 @@ export function DataBindingForm({
 
       {binding.table && columns.length > 0 && (
         <>
+          {dataFields.length > 0 && (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
               Map columns to widget fields
@@ -158,6 +169,7 @@ export function DataBindingForm({
               ))}
             </div>
           </div>
+          )}
 
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -231,7 +243,7 @@ export function DataBindingForm({
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Order by">
+            <Field label={singleRow ? "Sort by *" : "Order by"}>
               <select
                 className={selCls}
                 value={binding.orderBy?.column ?? ""}
@@ -265,14 +277,27 @@ export function DataBindingForm({
                 <option value="ASC">Ascending</option>
               </select>
             </Field>
-            <NumberField
-              label="Limit"
-              min={1}
-              max={100}
-              value={binding.limit}
-              onChange={(v) => patch({ limit: v })}
-            />
+            {singleRow ? (
+              <Field label="Limit">
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-500">
+                  1 row
+                </div>
+              </Field>
+            ) : (
+              <NumberField
+                label="Limit"
+                min={1}
+                max={100}
+                value={binding.limit}
+                onChange={(v) => patch({ limit: v })}
+              />
+            )}
           </div>
+          {singleRow && !binding.orderBy?.column && (
+            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Choose a sort column — the banner shows the first row in that order.
+            </div>
+          )}
         </>
       )}
     </div>

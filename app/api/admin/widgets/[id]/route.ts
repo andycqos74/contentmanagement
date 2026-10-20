@@ -54,9 +54,18 @@ export async function PATCH(
       : { disconnect: true };
   }
   if (body.dataBinding !== undefined) {
-    data.dataBinding = body.dataBinding
-      ? (dataBindingSchema.parse(body.dataBinding) as Prisma.InputJsonValue)
-      : Prisma.JsonNull;
+    let binding = body.dataBinding ? dataBindingSchema.parse(body.dataBinding) : null;
+    // A banner links to exactly one row, so it needs a deterministic sort.
+    if (binding && existing.type === "BANNER" && binding.table) {
+      if (!binding.orderBy?.column) {
+        return NextResponse.json(
+          { error: "The banner's database link needs a sort column." },
+          { status: 400 },
+        );
+      }
+      binding = { ...binding, limit: 1 };
+    }
+    data.dataBinding = binding ? (binding as Prisma.InputJsonValue) : Prisma.JsonNull;
   }
 
   const replaceItems = Array.isArray(body.items);

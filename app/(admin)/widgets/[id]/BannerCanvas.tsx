@@ -15,6 +15,7 @@ import {
 } from "@/components/widgets/banner/BannerElementView";
 import { ensureFontLoaded, fontStack } from "@/lib/widgets/fonts";
 import type { BannerElement, BannerSettings } from "@/lib/widgets/registry";
+import { applyBannerRow, type BannerRow } from "@/lib/widgets/banner-data";
 
 type Dir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 const HANDLES: Dir[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -149,12 +150,16 @@ export function BannerCanvas({
   setItems,
   selectedId,
   setSelectedId,
+  dataRow = null,
 }: {
   settings: BannerSettings;
   items: BannerElement[];
   setItems: (v: BannerElement[]) => void;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
+  // The linked database row; bound elements display its values (display only —
+  // the stored elements keep their static fallback content).
+  dataRow?: BannerRow | null;
 }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(0.4);
@@ -407,7 +412,7 @@ export function BannerCanvas({
                   }}
                 >
                   <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
-                    <BannerElementView el={el} />
+                    <BannerElementView el={applyBannerRow(el, dataRow)} />
                   </div>
                 </div>
               );
