@@ -84,6 +84,9 @@ const bannerElementBase = {
   hidden: z.boolean().default(false),
   // Elements sharing a non-empty groupId move and resize together on the canvas.
   groupId: z.string().default(""),
+  // Banner database link: column whose value replaces this element's content
+  // (text / image URL / button label). Empty = static content.
+  dataField: z.string().optional(),
 };
 
 export const bannerTextSchema = z.object({
@@ -125,6 +128,8 @@ export const bannerButtonSchema = z.object({
   // Where the link opens: "_blank" = new tab, "_top" = same window (full page).
   // Never the default (which would navigate inside the embed iframe).
   target: z.enum(["_blank", "_top"]).default("_blank"),
+  // Banner database link: column whose value replaces the button's URL.
+  urlField: z.string().optional(),
   bg: z.string().default("#094582"),
   color: z.string().default("#ffffff"),
   fontSize: z.number().default(16),

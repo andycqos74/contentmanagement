@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import {
   BringToFront,
   Copy,
+  Database,
   Eye,
   EyeOff,
   Image as ImageIcon,
@@ -41,11 +42,14 @@ export function BannerControls({
   setItems,
   selectedId,
   setSelectedId,
+  dataColumns = null,
 }: {
   items: BannerElement[];
   setItems: (v: BannerElement[]) => void;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
+  // Columns of the linked table/view; null when the banner has no database link.
+  dataColumns?: string[] | null;
 }) {
   const stagger = 40 + (items.length % 5) * 24;
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -491,6 +495,34 @@ export function BannerControls({
             </div>
           )}
 
+          {dataColumns && sel.type !== "shape" && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Database size={13} /> Database field
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField
+                  label={sel.type === "image" ? "Image URL from" : sel.type === "button" ? "Label from" : "Text from"}
+                  value={sel.dataField ?? ""}
+                  onChange={(v) => patch(sel.id, { dataField: v || undefined })}
+                  options={columnOptions(dataColumns, sel.dataField)}
+                />
+                {sel.type === "button" && (
+                  <SelectField
+                    label="Link URL from"
+                    value={sel.urlField ?? ""}
+                    onChange={(v) => patch(sel.id, { urlField: v || undefined })}
+                    options={columnOptions(dataColumns, sel.urlField)}
+                  />
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                A bound value comes from the linked row; the static value above is shown if the
+                field is empty or no row matches.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2 border-t border-slate-100 pt-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -547,4 +579,12 @@ export function BannerControls({
       )}
     </div>
   );
+}
+
+// Column choices for an element binding; keeps a bound column that no longer
+// exists in the table visible (flagged) rather than silently dropping it.
+function columnOptions(columns: string[], current: string | undefined) {
+  const opts = [{ value: "", label: "— static —" }, ...columns.map((c) => ({ value: c, label: c }))];
+  if (current && !columns.includes(current)) opts.push({ value: current, label: `${current} (missing)` });
+  return opts;
 }

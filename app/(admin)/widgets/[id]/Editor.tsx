@@ -34,6 +34,7 @@ import {
   type NewsSettings,
   type WidgetTypeKey,
 } from "@/lib/widgets/registry";
+import { bannerBoundColumns, type BannerRow } from "@/lib/widgets/banner-data";
 import {
   HeroContentEditor,
   HeroSettingsForm,
@@ -119,6 +120,13 @@ export function Editor({
   const [galleryFolderItems, setGalleryFolderItems] = useState<Record<string, unknown>[]>([]);
   const [galleryBrowserAlbums, setGalleryBrowserAlbums] = useState<Record<string, unknown>[]>([]);
   const [storageTick, setStorageTick] = useState(0); // bumped when the editor creates a folder / uploads
+  // Banner database link: one row of a table/view whose fields feed bound elements.
+  const [bannerLinked, setBannerLinked] = useState(isBanner && Boolean(initial.dataSourceId));
+  const [linkColumns, setLinkColumns] = useState<string[]>([]);
+  const [bannerRow, setBannerRow] = useState<BannerRow | null>(null);
+  const [bannerRowError, setBannerRowError] = useState<string | null>(null);
+  const [bannerRowLoading, setBannerRowLoading] = useState(false);
+  const boundColumnsKey = isBanner ? bannerBoundColumns(items as BannerElement[]).join(",") : "";
 
   // Live data preview (debounced) when in DATA mode.
   useEffect(() => {
@@ -146,6 +154,42 @@ export function Editor({
     }, 500);
     return () => clearTimeout(t);
   }, [contentSource, dataSourceId, binding, initial.id]);
+
+  // Live linked-row preview for a banner (debounced): bound elements show the
+  // current database values on the canvas.
+  useEffect(() => {
+    if (!isBanner || !bannerLinked || !dataSourceId || !binding.table || !binding.orderBy?.column) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the stale row when the link is incomplete
+      setBannerRow(null);
+      setBannerRowError(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setBannerRowLoading(true);
+      setBannerRowError(null);
+      try {
+        const res = await fetch(`/api/admin/widgets/${initial.id}/preview`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dataSourceId,
+            dataBinding: binding,
+            columns: boundColumnsKey ? boundColumnsKey.split(",") : [],
+          }),
+        });
+        const d = await res.json();
+        if (res.ok) setBannerRow(d.row ?? null);
+        else {
+          setBannerRow(null);
+          setBannerRowError(d.error ?? "Preview failed");
+        }
+      } catch {
+        setBannerRowError("Preview failed");
+      }
+      setBannerRowLoading(false);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [isBanner, bannerLinked, dataSourceId, binding, boundColumnsKey, initial.id]);
 
   // Live folder preview for a folder-linked gallery (images auto-listed from the CDN).
   useEffect(() => {
@@ -478,12 +522,72 @@ export function Editor({
             <div style={{ padding: 18 }}>
               {tab === "content" &&
                 (isBanner ? (
-                  <BannerControls
-                    items={items as BannerElement[]}
-                    setItems={(v) => setItems(v as Record<string, unknown>[])}
-                    selectedId={selectedElId}
-                    setSelectedId={setSelectedElId}
-                  />
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-slate-200 p-3">
+                      <label className="flex cursor-pointer items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                          <Database size={14} /> Link to a database row
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={bannerLinked}
+                          onChange={(e) => {
+                            const on = e.target.checked;
+                            setBannerLinked(on);
+                            if (on) {
+                              setBinding({ ...binding, limit: 1 });
+                            } else {
+                              setDataSourceId(null);
+                              setBinding(dataBindingSchema.parse({}));
+                            }
+                          }}
+                        />
+                      </label>
+                      {!bannerLinked ? (
+                        <p className="mt-1 text-xs text-slate-400">
+                          Pull text, images and links from a table or view so the banner updates
+                          itself when the data changes.
+                        </p>
+                      ) : (
+                        <div className="mt-3 space-y-3">
+                          <DataBindingForm
+                            dataSources={dataSources}
+                            dataFields={[]}
+                            dataSourceId={dataSourceId}
+                            setDataSourceId={setDataSourceId}
+                            binding={binding}
+                            setBinding={(b) => setBinding({ ...b, limit: 1 })}
+                            singleRow
+                            onColumns={setLinkColumns}
+                          />
+                          {bannerRowError ? (
+                            <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                              {bannerRowError}
+                            </div>
+                          ) : binding.table && binding.orderBy?.column ? (
+                            <div
+                              className={`rounded-md px-3 py-2 text-xs ${
+                                bannerRow ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
+                              }`}
+                            >
+                              {bannerRowLoading
+                                ? "Loading…"
+                                : bannerRow
+                                  ? "Row found — select an element to bind it to a field."
+                                  : "No row matches — bound elements show their static content."}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    <BannerControls
+                      items={items as BannerElement[]}
+                      setItems={(v) => setItems(v as Record<string, unknown>[])}
+                      selectedId={selectedElId}
+                      setSelectedId={setSelectedElId}
+                      dataColumns={bannerLinked && binding.table ? linkColumns : null}
+                    />
+                  </div>
                 ) : isSlider ? (
                   <SliderControls
                     items={items as SliderSlide[]}
@@ -699,6 +803,7 @@ export function Editor({
                   setItems={(v) => setItems(v as Record<string, unknown>[])}
                   selectedId={selectedElId}
                   setSelectedId={setSelectedElId}
+                  dataRow={bannerLinked ? bannerRow : null}
                 />
               ) : isSlider ? (
                 <SliderStage
