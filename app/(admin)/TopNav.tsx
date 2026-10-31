@@ -7,6 +7,7 @@ export function TopNav() {
   const pathname = usePathname();
   const isWidgets = pathname.startsWith("/widgets") || pathname === "/dashboard" || pathname === "/";
   const isNews = pathname.startsWith("/news");
+  const isFixtures = pathname.startsWith("/fixtures");
   const isPages = pathname.startsWith("/pages");
   const isData = pathname.startsWith("/data-sources");
   const isUsers = pathname.startsWith("/users");
@@ -16,6 +17,7 @@ export function TopNav() {
       {[
         { href: "/dashboard", label: "Widgets", active: isWidgets },
         { href: "/news", label: "News", active: isNews },
+        { href: "/fixtures", label: "Fixtures", active: isFixtures },
         { href: "/pages", label: "Pages", active: isPages },
         { href: "/data-sources", label: "Data sources", active: isData },
         { href: "/users", label: "Users", active: isUsers },
