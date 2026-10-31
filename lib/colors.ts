@@ -30,3 +30,20 @@ export function categoryColor(category: string | null | undefined): ColorToken {
   if (!category) return FALLBACK;
   return CATEGORY_COLORS[category] ?? FALLBACK;
 }
+
+// Stable per-competition hue (competition IDs come from the content DB, so we
+// cycle a fixed palette rather than naming them).
+const COMPETITION_PALETTE: ColorToken[] = [
+  { text: "#0A4B93", bg: "#EEF4FB", border: "#C7DAF0" },
+  { text: "#067647", bg: "#ECFDF3", border: "#ABEFC6" },
+  { text: "#5925DC", bg: "#F4F3FF", border: "#D9D6FE" },
+  { text: "#C4320A", bg: "#FFF4ED", border: "#F9DBAF" },
+  { text: "#0E7090", bg: "#ECFDFF", border: "#A5F0FC" },
+  { text: "#A15C07", bg: "#FFFAEB", border: "#FEDF89" },
+  { text: "#C11574", bg: "#FDF2FA", border: "#FCCEEE" },
+];
+
+export function competitionColor(id: number | null | undefined): ColorToken {
+  if (!id || id < 0) return FALLBACK;
+  return COMPETITION_PALETTE[id % COMPETITION_PALETTE.length];
+}
